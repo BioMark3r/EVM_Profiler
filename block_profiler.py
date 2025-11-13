@@ -31,19 +31,6 @@ Notes:
   - Internal ETH transfers aren't counted; only tx.value is summed.
   - Consider RPC rate limits; each tx fetches a receipt.
 """
-#!/usr/bin/env python3
-"""
-block_profiler.py
-
-Profile EVM-compatible blockchain traffic over a block range.
-Requires an HTTP JSON-RPC endpoint (e.g., Infura, Alchemy, local node).
-
-Usage:
-  python block_profiler.py --rpc https://mainnet.infura.io/v3/YOUR_KEY --start 21000000 --end 21000100 --out summary.json --csv per_block.csv
-
-Install:
-  pip install web3>=6.0.0 tqdm
-"""
 from __future__ import annotations
 import argparse
 import csv
