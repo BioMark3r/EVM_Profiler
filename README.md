@@ -1,4 +1,4 @@
-# 🧮 EVM Block Profiler (CLI + React UI)
+[# 🧮 EVM Block Profiler (CLI + React UI)
 
 A complete toolkit for profiling Ethereum-compatible blockchain traffic by block range.
 
@@ -162,3 +162,4 @@ Detailed per-block breakdowns, suitable for graphing and deeper data analysis.
 ## 📜 License
 
 MIT — free for personal and commercial use.
+](https://github.com/ethpandaops/spamoor/blob/master/docs/scenario-developers.md)
