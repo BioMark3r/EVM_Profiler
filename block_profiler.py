@@ -65,7 +65,7 @@ def wei_to_eth(wei: int) -> Decimal:
 def is_contract(w3: Web3, address: str) -> bool:
     try:
         code = w3.eth.get_code(address)
-        return code is not None and len(code) > 0 and code != b\"\\x00\" and code != b\"\"
+        return code is not None and len(code) > 0 and code != b"\x00" and code != b""
     except Exception:
         return False
 
