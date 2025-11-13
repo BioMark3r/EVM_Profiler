@@ -69,23 +69,24 @@ def is_contract(w3: Web3, address: str) -> bool:
     except Exception:
         return False
 
+
 def classify_from_logs(logs) -> Tuple[str, Optional[str]]:
-    \"\"\"Return (type, token_or_contract_address_if_applicable) based on logs.\"\"\"
+    """Return (type, token_or_contract_address_if_applicable) based on logs."""
     erc20_count = 0
     erc721_count = 0
     erc1155_count = 0
     tokens = Counter()
     for lg in logs:
-        topics = lg.get(\"topics\", [])
+        topics = lg.get("topics", [])
         if not topics:
             continue
         t0 = topics[0]
         if isinstance(t0, (bytes, bytearray, HexBytes)):
             t0 = Web3.to_hex(t0)
         t0 = t0.lower()
-        addr = lg.get(\"address\", \"\").lower()
+        addr = lg.get("address", "").lower()
         if t0 == SIG_TRANSFER.lower():
-            if lg.get(\"data\") and lg[\"data\"] != \"0x\":
+            if lg.get("data") and lg["data"] != "0x":
                 erc20_count += 1
             else:
                 erc721_count += 1
@@ -97,14 +98,14 @@ def classify_from_logs(logs) -> Tuple[str, Optional[str]]:
                 tokens[addr] += 1
     dominant = tokens.most_common(1)[0][0] if tokens else None
     if erc20_count > 0 and erc721_count == 0 and erc1155_count == 0:
-        return \"erc20_transfer\", dominant
+        return "erc20_transfer", dominant
     if erc721_count > 0 and erc20_count == 0 and erc1155_count == 0:
-        return \"erc721_transfer\", dominant
+        return "erc721_transfer", dominant
     if erc1155_count > 0 and erc20_count == 0 and erc721_count == 0:
-        return \"erc1155_transfer\", dominant
+        return "erc1155_transfer", dominant
     if erc20_count or erc721_count or erc1155_count:
-        return \"mixed_token_activity\", dominant
-    return \"other_contract_call\", None
+        return "mixed_token_activity", dominant
+    return "other_contract_call", None
 
 def profile_range(rpc: str, start: int, end: int, out: str, csv_path: Optional[str], skip_contract_check: bool, tx_cap: Optional[int]) -> Dict[str, Any]:
     if end < start:
