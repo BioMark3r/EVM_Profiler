@@ -31,6 +31,19 @@ Notes:
   - Internal ETH transfers aren't counted; only tx.value is summed.
   - Consider RPC rate limits; each tx fetches a receipt.
 """
+#!/usr/bin/env python3
+"""
+block_profiler.py
+
+Profile EVM-compatible blockchain traffic over a block range.
+Requires an HTTP JSON-RPC endpoint (e.g., Infura, Alchemy, local node).
+
+Usage:
+  python block_profiler.py --rpc https://mainnet.infura.io/v3/YOUR_KEY --start 21000000 --end 21000100 --out summary.json --csv per_block.csv
+
+Install:
+  pip install web3>=6.0.0 tqdm
+"""
 from __future__ import annotations
 import argparse
 import csv
@@ -38,7 +51,7 @@ import json
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 from decimal import Decimal, getcontext
-from typing import Dict, Any, List, Tuple, Optional
+from typing import Dict, Any, Tuple, Optional
 
 from web3 import Web3
 from web3.types import HexBytes
@@ -68,7 +81,6 @@ def is_contract(w3: Web3, address: str) -> bool:
         return code is not None and len(code) > 0 and code != b"\x00" and code != b""
     except Exception:
         return False
-
 
 def classify_from_logs(logs) -> Tuple[str, Optional[str]]:
     """Return (type, token_or_contract_address_if_applicable) based on logs."""
@@ -109,10 +121,10 @@ def classify_from_logs(logs) -> Tuple[str, Optional[str]]:
 
 def profile_range(rpc: str, start: int, end: int, out: str, csv_path: Optional[str], skip_contract_check: bool, tx_cap: Optional[int]) -> Dict[str, Any]:
     if end < start:
-        raise ValueError(\"--end must be >= --start\")
-    w3 = Web3(Web3.HTTPProvider(rpc, request_kwargs={\"timeout\": 60}))
+        raise ValueError("--end must be >= --start")
+    w3 = Web3(Web3.HTTPProvider(rpc, request_kwargs={"timeout": 60}))
     if not w3.is_connected():
-        raise SystemExit(\"Could not connect to RPC endpoint.\")
+        raise SystemExit("Could not connect to RPC endpoint.")
     chain_id = w3.eth.chain_id
 
     tx_type_stats: Dict[str, TxStats] = defaultdict(TxStats)
@@ -127,13 +139,13 @@ def profile_range(rpc: str, start: int, end: int, out: str, csv_path: Optional[s
     csv_writer = None
     csv_file = None
     if csv_path:
-        csv_file = open(csv_path, \"w\", newline=\"\")
+        csv_file = open(csv_path, "w", newline="")
         csv_writer = csv.writer(csv_file)
         csv_writer.writerow([
-            \"block_number\",\"timestamp\",\"tx_count\",
-            \"eth_transfer\",\"contract_creation\",\"erc20_transfer\",\"erc721_transfer\",\"erc1155_transfer\",
-            \"other_contract_call\",\"mixed_token_activity\",\"other_eoa_call\",
-            \"block_gas_used\",\"block_gas_limit\"
+            "block_number","timestamp","tx_count",
+            "eth_transfer","contract_creation","erc20_transfer","erc721_transfer","erc1155_transfer",
+            "other_contract_call","mixed_token_activity","other_eoa_call",
+            "block_gas_used","block_gas_limit"
         ])
 
     # Cache for contract code checks
@@ -141,43 +153,43 @@ def profile_range(rpc: str, start: int, end: int, out: str, csv_path: Optional[s
 
     processed = 0
     DEFAULT_TYPES = [
-        \"eth_transfer\",\"contract_creation\",\"erc20_transfer\",\"erc721_transfer\",\"erc1155_transfer\",
-        \"other_contract_call\",\"mixed_token_activity\",\"other_eoa_call\",
+        "eth_transfer","contract_creation","erc20_transfer","erc721_transfer","erc1155_transfer",
+        "other_contract_call","mixed_token_activity","other_eoa_call",
     ]
 
-    for bnum in tqdm(range(start, end + 1), desc=\"Blocks\"):
+    for bnum in tqdm(range(start, end + 1), desc="Blocks"):
         block = w3.eth.get_block(bnum, full_transactions=True)
         block_counts = Counter()
         block_gas_used_sum = 0
 
-        for tx in block[\"transactions\"]:
+        for tx in block["transactions"]:
             if tx_cap is not None and processed >= tx_cap:
                 break
             processed += 1
             total_tx += 1
-            if tx.get(\"from\"): unique_from.add(tx[\"from\"].lower())
-            if tx.get(\"to\"): unique_to.add(tx[\"to\"].lower())
+            if tx.get("from"): unique_from.add(tx["from"].lower())
+            if tx.get("to"): unique_to.add(tx["to"].lower())
 
-            receipt = w3.eth.get_transaction_receipt(tx[\"hash\"])  # includes logs
-            gas_used = receipt.get(\"gasUsed\", 0) or 0
+            receipt = w3.eth.get_transaction_receipt(tx["hash"])  # includes logs
+            gas_used = receipt.get("gasUsed", 0) or 0
             block_gas_used_sum += int(gas_used)
-            gas_price_wei = int(tx.get(\"gasPrice\", 0) or 0)
-            value_wei = int(tx.get(\"value\", 0) or 0)
+            gas_price_wei = int(tx.get("gasPrice", 0) or 0)
+            value_wei = int(tx.get("value", 0) or 0)
 
-            if tx.get(\"to\") is None:
-                tx_type = \"contract_creation\"
+            if tx.get("to") is None:
+                tx_type = "contract_creation"
                 token_or_contract = None
             else:
-                tx_type, token_or_contract = classify_from_logs(receipt.get(\"logs\", []))
-                if tx_type == \"other_contract_call\":
+                tx_type, token_or_contract = classify_from_logs(receipt.get("logs", []))
+                if tx_type == "other_contract_call":
                     if value_wei > 0:
-                        tx_type = \"eth_transfer\"
+                        tx_type = "eth_transfer"
                     elif not skip_contract_check:
-                        addr = tx[\"to\"].lower()
+                        addr = tx["to"].lower()
                         if addr not in contract_cache:
                             contract_cache[addr] = is_contract(w3, addr)
                         if not contract_cache[addr]:
-                            tx_type = \"other_eoa_call\"
+                            tx_type = "other_eoa_call"
 
             # Aggregate type stats
             stats = tx_type_stats[tx_type]
@@ -190,21 +202,20 @@ def profile_range(rpc: str, start: int, end: int, out: str, csv_path: Optional[s
             total_eth_wei += int(value_wei)
 
             # Top trackers
-            if tx.get(\"to\"): top_contracts[tx[\"to\"].lower()] += 1
+            if tx.get("to"): top_contracts[tx["to"].lower()] += 1
             if token_or_contract: top_tokens[token_or_contract.lower()] += 1
 
         if csv_writer:
             row = [
-                block[\"number\"],
-                block[\"timestamp\"],
-                len(block[\"transactions\"]),
+                block["number"],
+                block["timestamp"],
+                len(block["transactions"]),
             ]
-            # Ensure all types have counts
             for t in DEFAULT_TYPES:
                 row.append(block_counts.get(t, 0))
             row.extend([
-                block.get(\"gasUsed\", 0) if \"gasUsed\" in block else block_gas_used_sum,
-                block.get(\"gasLimit\", 0),
+                block.get("gasUsed", 0) if "gasUsed" in block else block_gas_used_sum,
+                block.get("gasLimit", 0),
             ])
             csv_writer.writerow(row)
 
@@ -215,47 +226,48 @@ def profile_range(rpc: str, start: int, end: int, out: str, csv_path: Optional[s
         csv_file.close()
 
     summary = {
-        \"start_block\": start,
-        \"end_block\": end if tx_cap is None or processed >= (end - start + 1) else start + processed,  # approximate if cut short
-        \"chain_id\": chain_id,
-        \"block_count\": (end - start + 1) if tx_cap is None else min(end - start + 1, processed),
-        \"total_tx\": total_tx,
-        \"unique_senders\": len(unique_from),
-        \"unique_receivers\": len(unique_to),
-        \"total_eth_transferred_eth\": str(wei_to_eth(total_eth_wei)),
-        \"tx_types\": {
+        "start_block": start,
+        "end_block": end,
+        "chain_id": chain_id,
+        "block_count": end - start + 1,
+        "total_tx": total_tx,
+        "unique_senders": len(unique_from),
+        "unique_receivers": len(unique_to),
+        "total_eth_transferred_eth": str(wei_to_eth(total_eth_wei)),
+        "tx_types": {
             k: {
-                \"count\": v.count,
-                \"gas_used\": v.gas_used,
-                \"avg_gas_price_gwei\": (Decimal(v.gas_price_wei_sum) / Decimal(max(v.count, 1)) / Decimal(1e9)).quantize(Decimal(\"0.0001\")) if v.count else \"0\",
-                \"eth_value_sum_eth\": str(wei_to_eth(v.eth_value_wei_sum)),
+                "count": v.count,
+                "gas_used": v.gas_used,
+                "avg_gas_price_gwei": (Decimal(v.gas_price_wei_sum) / Decimal(max(v.count, 1)) / Decimal(1e9)).quantize(Decimal("0.0001")) if v.count else "0",
+                "eth_value_sum_eth": str(wei_to_eth(v.eth_value_wei_sum)),
             }
             for k, v in sorted(tx_type_stats.items(), key=lambda kv: kv[0])
         },
-        \"top_contracts_by_tx\": top_contracts.most_common(20),
-        \"top_tokens_by_events\": top_tokens.most_common(20),
-        \"notes\": [
-            \"ERC20 vs ERC721 inferred from Transfer event payload (amount vs none).\",\n            \"Mixed token activity indicates multiple token standards in a single tx.\",
-            \"ETH transferred sums only tx.value; internal transfers not included.\",
+        "top_contracts_by_tx": top_contracts.most_common(20),
+        "top_tokens_by_events": top_tokens.most_common(20),
+        "notes": [
+            "ERC20 vs ERC721 inferred from Transfer event payload (amount vs none).",
+            "Mixed token activity indicates multiple token standards in a single tx.",
+            "ETH transferred sums only tx.value; internal transfers not included.",
         ],
-        \"limits\": {
-            \"tx_cap\": tx_cap,
-            \"skip_contract_check\": skip_contract_check,
+        "limits": {
+            "tx_cap": tx_cap,
+            "skip_contract_check": skip_contract_check,
         }
     }
-    with open(out, \"w\") as f:
+    with open(out, "w") as f:
         json.dump(summary, f, indent=2)
     return summary
 
 def main():
-    ap = argparse.ArgumentParser(description=\"Profile blockchain traffic by block range (EVM)\")
-    ap.add_argument(\"--rpc\", required=True, help=\"HTTP(s) JSON-RPC endpoint (e.g. Infura/Alchemy/local)\")
-    ap.add_argument(\"--start\", type=int, required=True, help=\"Start block (inclusive)\")
-    ap.add_argument(\"--end\", type=int, required=True, help=\"End block (inclusive)\")
-    ap.add_argument(\"--out\", default=\"summary.json\", help=\"Path to write JSON summary (default: summary.json)\")
-    ap.add_argument(\"--csv\", default=None, help=\"Optional per-block CSV path (default: none)\")
-    ap.add_argument(\"--skip-contract-check\", action=\"store_true\", help=\"Don't check if 'to' is a contract (faster)\")
-    ap.add_argument(\"--tx-cap\", type=int, default=None, help=\"Maximum number of transactions to process (safety cap)\")
+    ap = argparse.ArgumentParser(description="Profile blockchain traffic by block range (EVM)")
+    ap.add_argument("--rpc", required=True, help="HTTP(s) JSON-RPC endpoint (e.g. Infura/Alchemy/local)")
+    ap.add_argument("--start", type=int, required=True, help="Start block (inclusive)")
+    ap.add_argument("--end", type=int, required=True, help="End block (inclusive)")
+    ap.add_argument("--out", default="summary.json", help="Path to write JSON summary (default: summary.json)")
+    ap.add_argument("--csv", default=None, help="Optional per-block CSV path (default: none)")
+    ap.add_argument("--skip-contract-check", action="store_true", help="Don't check if 'to' is a contract (faster)")
+    ap.add_argument("--tx-cap", type=int, default=None, help="Maximum number of transactions to process (safety cap)")
     args = ap.parse_args()
 
     summary = profile_range(
@@ -267,7 +279,13 @@ def main():
         skip_contract_check=args.skip_contract_check,
         tx_cap=args.tx_cap,
     )
-    print(f\"Wrote JSON summary to {args.out}\")
+    print(f"Wrote JSON summary to {args.out}")
     if args.csv:
-        print(f\"Wrote per-block CSV to {args.csv}\")
-    # Quick console peek\n    print(\"=== Totals by type ===\")\n    for k, v in summary[\"tx_types\"].items():\n        print(f\"{k:22s} count={v['count']:8d} gas_used={v['gas_used']:12d} avg_gas_price_gwei={v['avg_gas_price_gwei']} eth_sum={v['eth_value_sum_eth']}\")\n\nif __name__ == \"__main__\":\n    main()\n
+        print(f"Wrote per-block CSV to {args.csv}")
+    print("=== Totals by type ===")
+    for k, v in summary["tx_types"].items():
+        print(f"{k:22s} count={v['count']:8d} gas_used={v['gas_used']:12d} avg_gas_price_gwei={v['avg_gas_price_gwei']} eth_sum={v['eth_value_sum_eth']}")
+
+
+if __name__ == "__main__":
+    main()
