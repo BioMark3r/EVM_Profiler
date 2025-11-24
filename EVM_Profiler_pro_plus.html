@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>EVM Profiler — Pro Plus</title>
+  <title>EVM Profiler — Pro Plus (Tokens + CSV)</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
@@ -49,6 +49,32 @@
       color:var(--muted);
       margin:6px 0 0;
       font-size:13px;
+      display:flex;
+      align-items:center;
+      gap:8px;
+    }
+    .mode-pill {
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      padding:3px 9px;
+      border-radius:999px;
+      font-size:11px;
+      border:1px solid #1f2937;
+      background:#020617;
+    }
+    .mode-dot {
+      width:8px;
+      height:8px;
+      border-radius:50%;
+      background:#22c55e;
+    }
+    .mode-pill.offline .mode-dot {
+      background:#f97316;
+    }
+    .mode-pill.offline {
+      border-color:#7c2d12;
+      background:#111827;
     }
     .toolbar, .row {
       display:flex;
@@ -73,6 +99,10 @@
       background:#0c0f14;
       color:var(--fg);
       font-size:13px;
+    }
+    input[type="file"] {
+      font-size: 12px;
+      color: var(--muted);
     }
     input[type="text"] { width:520px; max-width:70vw; }
     .btn {
@@ -127,6 +157,10 @@
     }
     .status { color:var(--muted); font-size:12px; }
     .grid { display:grid; grid-template-columns: 1fr; gap:16px; margin-top:18px; }
+    .grid-2 { display:grid; grid-template-columns: 2fr 1.4fr; gap:16px; margin-top:18px; }
+    @media (max-width: 1040px){
+      .grid-2 { grid-template-columns:1fr; }
+    }
     .panel {
       background:var(--card);
       border:1px solid var(--border);
@@ -137,10 +171,10 @@
     .flex { display:flex; gap:16px; flex-wrap: wrap; }
     .grow { flex:1; min-width: 320px; }
     table { width:100%; border-collapse: collapse; }
-    th, td { padding:10px; border-bottom:1px solid var(--border); font-size: 13px; }
+    th, td { padding:8px 10px; border-bottom:1px solid var(--border); font-size: 12px; }
     th { text-align:left; color: var(--muted); font-weight:600; }
     tr:hover { background: rgba(255,255,255,0.03); }
-    .pill { display:inline-block; padding:3px 8px; border-radius:999px; background: #0e7490; font-size:12px; }
+    .pill { display:inline-block; padding:3px 8px; border-radius:999px; background: #0e7490; font-size:11px; }
     .muted { color: var(--muted); }
     .progress {
       height: 16px;
@@ -157,7 +191,6 @@
       transition: width .2s ease;
       box-shadow:0 0 14px rgba(129,140,248,.9);
     }
-    .sep { height: 12px; }
     .heartbeat { display:inline-flex; align-items:center; gap:6px; margin-left:6px; }
     .dot {
       width:10px; height:10px; border-radius:50%;
@@ -181,7 +214,6 @@
       100% { box-shadow: 0 0 0 0 rgba(34,197,94,0);}
     }
     .micro { font-size:11px; color:var(--muted); }
-    .spacer { flex:1; }
     .kpis { display:flex; flex-wrap:wrap; gap:12px; }
     .kpi {
       background:#111827;
@@ -193,14 +225,16 @@
     .kpi-label { font-size:11px; color:#9ca3af; text-transform:uppercase; letter-spacing:.05em; }
     .kpi-value { font-size:18px; font-weight:600; margin-top:4px; }
     .kpi-sub { font-size:11px; color:#6b7280; margin-top:2px; }
+    .subtle-label { font-size:11px; color:#9ca3af; }
   </style>
 </head>
 <body>
   <header>
     <div class="wrap">
-      <h1>📊 EVM Profiler — Pro Plus</h1>
+      <h1>📊 EVM Profiler — Pro Plus (Tokens + CSV)</h1>
       <p class="small">
-        Concurrent block fetch + provider presets + dual-pass token detection + Spamoor export + richer tx type breakdown.
+        Concurrent block fetch • provider presets • dual-pass token detection • token metadata • CSV offline mode • Spamoor export.
+        <span id="modePill" class="mode-pill"><span class="mode-dot"></span><span id="modeText">Live RPC</span></span>
       </p>
       <div class="toolbar">
         <div class="box" style="flex:1; flex-wrap:wrap; gap:10px 16px;">
@@ -221,22 +255,30 @@
               <option value="public">Public Node</option>
               <option value="local">Local (Geth/Nethermind)</option>
             </select>
-            <div>Start</div><input id="startBlock" type="number" value="0" style="width:120px;">
-            <div>End</div><input id="endBlock" type="number" value="0" style="width:120px;">
-            <div>Page</div><input id="pageSize" type="number" value="500" style="width:90px;">
-            <div>Conc.</div><input id="concurrency" type="number" value="4" style="width:80px;">
+            <div>Start</div><input id="startBlock" type="number" value="0" style="width:100px;">
+            <div>End</div><input id="endBlock" type="number" value="0" style="width:100px;">
+            <div>Page</div><input id="pageSize" type="number" value="500" style="width:80px;">
+            <div>Conc.</div><input id="concurrency" type="number" value="4" style="width:70px;">
             <label><input id="skipContract" type="checkbox" checked> Skip contract check</label>
             <label><input id="dualPass" type="checkbox"> Dual-pass (logs + receipts)</label>
-            <div>Tx cap</div><input id="txCap" type="number" value="" placeholder="optional" style="width:120px;">
-            <button id="runBtn" class="btn run-main">▶ Run</button>
-            <button id="stopBtn" class="btn stop-main" disabled>■ Stop</button>
+            <div>Tx cap</div><input id="txCap" type="number" value="" placeholder="optional" style="width:110px;">
           </div>
           <div class="row">
+            <button id="runBtn" class="btn run-main">▶ Run</button>
+            <button id="stopBtn" class="btn stop-main" disabled>■ Stop</button>
+            <span class="spacer"></span>
             <button id="exportJson" class="btn">summary.json</button>
             <button id="exportCsv" class="btn">per_block.csv</button>
-            <button id="exportSpamoor" class="btn">Spamoor YAML</button>
+            <button id="exportSpamoor" class="btn">Spamoor YAML (combined)</button>
+            <button id="exportSpamoorMulti" class="btn">Spamoor YAML (per scenario)</button>
             <span id="runStatus" class="status"></span>
             <span id="errorStatus" class="status" style="color:#f97373;"></span>
+          </div>
+          <div class="row">
+            <span class="subtle-label">Offline mode:</span>
+            <input id="csvFile" type="file" accept=".csv" />
+            <button id="loadCsvBtn" class="btn">Load CSV</button>
+            <span class="status" id="csvStatus"></span>
           </div>
           <div class="progress" style="flex:1; max-width: 860px; margin-top:4px;">
             <div id="progressbar"></div>
@@ -251,13 +293,11 @@
     <section class="grid">
       <div class="panel">
         <h2>Overview</h2>
-        <div id="overviewKpis" class="kpis">
-          <!-- filled by JS -->
-        </div>
+        <div id="overviewKpis" class="kpis"></div>
       </div>
     </section>
 
-    <section class="grid">
+    <section class="grid-2">
       <div class="panel">
         <h2>Transaction types</h2>
         <div class="flex">
@@ -265,9 +305,34 @@
           <div class="grow"><canvas id="txShareChart" height="260"></canvas></div>
         </div>
       </div>
-
       <div class="panel">
-        <h2>Tables</h2>
+        <h2>Token metadata</h2>
+        <div class="row" style="margin-bottom:8px;">
+          <button id="resolveTokensBtn" class="btn">Resolve ERC-20 metadata</button>
+          <button id="exportTokensBtn" class="btn">Export tokens.json</button>
+          <span id="tokenStatus" class="status"></span>
+        </div>
+        <div style="overflow:auto; max-height:320px;">
+          <table id="tokensTable">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Address</th>
+                <th>Symbol</th>
+                <th>Name</th>
+                <th>Decimals</th>
+                <th>Tx count</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="grid">
+      <div class="panel">
+        <h2>Tx-type table</h2>
         <div style="overflow:auto;">
           <table id="typesTable">
             <thead>
@@ -292,7 +357,10 @@
     let summary = null;
     let perBlockRows = [];
     let cancelRequested = false;
-    let runStartMs = 0;
+
+    // token metadata state
+    const tokenStats = {}; // address -> { tx_count }
+    const tokenMeta  = {}; // address -> { symbol, name, decimals, resolved }
 
     const hbDot = $("#hbDot");
     const hbText = $("#hbText");
@@ -302,6 +370,18 @@
     const errorStatus = $("#errorStatus");
     const progressbar = $("#progressbar");
     const blockProgressText = $("#blockProgressText");
+    const modePill = $("#modePill");
+    const modeText = $("#modeText");
+
+    function setMode(offline){
+      if (offline){
+        modePill.classList.add("offline");
+        modeText.textContent = "Offline CSV";
+      } else {
+        modePill.classList.remove("offline");
+        modeText.textContent = "Live RPC";
+      }
+    }
 
     function beat(msg="active"){
       hbDot.className = "dot ok";
@@ -355,7 +435,7 @@
       concEl.value = p.conc;
     });
 
-    // Simple concurrency helper for per-page block fetch
+    // concurrency helper
     async function mapWithConcurrency(items, concurrency, fn) {
       const results = new Array(items.length);
       let index = 0;
@@ -426,6 +506,7 @@
       tbody.innerHTML=entries.map(([t,v])=>`<tr><td><span class="pill">${t}</span></td><td>${v.count||0}</td><td>${v.gas_used||0}</td><td>${v.avg_gas_price_gwei||0}</td></tr>`).join("");
       renderCharts();
       renderOverview();
+      renderTokensTable();
     }
 
     // Overview KPIs
@@ -452,11 +533,13 @@
         tpsText = tps ? tps.toFixed(3) : "0.000";
       }
 
+      setMode(!!summary.offline);
+
       el.innerHTML = `
         <div class="kpi">
           <div class="kpi-label">Blocks</div>
           <div class="kpi-value">${blocks}</div>
-          <div class="kpi-sub">from #${summary.start_block} to #${summary.end_block}</div>
+          <div class="kpi-sub">#${summary.start_block} → #${summary.end_block}</div>
         </div>
         <div class="kpi">
           <div class="kpi-label">Total tx</div>
@@ -471,7 +554,7 @@
         <div class="kpi">
           <div class="kpi-label">Chain ID</div>
           <div class="kpi-value">${summary.chain_id ?? "?"}</div>
-          <div class="kpi-sub">from RPC</div>
+          <div class="kpi-sub">${summary.offline ? "offline CSV" : "from RPC"}</div>
         </div>
       `;
     }
@@ -480,6 +563,13 @@
     const SIG_TRANSFER = Web3.utils.keccak256("Transfer(address,address,uint256)").toLowerCase();
     const SIG_ERC1155_SINGLE = Web3.utils.keccak256("TransferSingle(address,address,address,uint256,uint256)").toLowerCase();
     const SIG_ERC1155_BATCH  = Web3.utils.keccak256("TransferBatch(address,address,address,uint256[],uint256[])").toLowerCase();
+
+    // minimal ERC-20 ABI
+    const ERC20_ABI = [
+      { constant:true, inputs:[], name:"symbol", outputs:[{name:"",type:"string"}], type:"function" },
+      { constant:true, inputs:[], name:"name", outputs:[{name:"",type:"string"}], type:"function" },
+      { constant:true, inputs:[], name:"decimals", outputs:[{name:"",type:"uint8"}], type:"function" }
+    ];
 
     async function scanLogsTokens(start, end, stepBlocks) {
       const totalBlocks = end - start + 1;
@@ -533,11 +623,16 @@
 
     async function runProfiler(){
       errorStatus.textContent = "";
+      $("#csvStatus").textContent = "";
       if (!(await connectRPC())) return;
       cancelRequested = false;
       disableRunUI(true);
       runStatus.textContent = "Running…";
-      runStartMs = Date.now();
+
+      // reset token state
+      for (const k of Object.keys(tokenStats)) delete tokenStats[k];
+      for (const k of Object.keys(tokenMeta)) delete tokenMeta[k];
+      renderTokensTable();
 
       const start = Number(startBlockEl.value);
       const end   = Number(endBlockEl.value);
@@ -558,7 +653,8 @@
         chain_id:    null,
         block_count: blocksTotal,
         total_tx:    0,
-        tx_types: {}
+        tx_types: {},
+        offline: false
       };
       perBlockRows = [];
       renderOverview();
@@ -641,8 +737,6 @@
           let blockCounts = {};
           let blockGasUsed = 0n;
 
-          // Receipts strategy: if dualPass enabled and tokenHashSet exists,
-          // only fetch receipts for tx hashes that appear in tokenHashSet.
           let receipts;
           if (tokenHashSet) {
             receipts = await Promise.all(
@@ -672,6 +766,13 @@
                 if (!lg.topics || !lg.topics.length) continue;
                 const t0 = (lg.topics[0] || "").toLowerCase();
                 if (t0 === SIG_TRANSFER) {
+                  // count token stats by contract address
+                  const addr = (lg.address || "").toLowerCase();
+                  if (addr) {
+                    tokenStats[addr] = tokenStats[addr] || { tx_count:0 };
+                    tokenStats[addr].tx_count += 1;
+                    tokenMeta[addr] = tokenMeta[addr] || { symbol:"", name:"", decimals:null, resolved:false };
+                  }
                   if (lg.data && lg.data !== "0x") erc20++; else erc721++;
                 } else if (t0 === SIG_ERC1155_SINGLE || t0 === SIG_ERC1155_BATCH) {
                   erc1155++;
@@ -690,7 +791,7 @@
             if (typ === "other_contract_call" && !doSkip && tx.to) {
               const a = tx.to.toLowerCase();
               if (a in codeCache && !codeCache[a]) {
-                typ = "other_contract_call"; // keep as generic call for EOAs in this simple version
+                typ = "other_contract_call";
               }
             }
 
@@ -716,7 +817,7 @@
             blk.number,
             blk.timestamp,
             (blk.transactions || []).length,
-            DEFAULT_TYPES.map(t => blockCounts[t] || 0).join("|"),
+            ["eth_transfer","contract_creation","erc20_transfer","erc721_transfer","erc1155_transfer","mixed_token_activity","other_contract_call"].map(t => blockCounts[t] || 0).join("|"),
             Number(blockGasUsed),
             Number(blk.gasLimit || 0)
           ]);
@@ -782,7 +883,7 @@
       dl("per_block.csv", lines.join("\n"), "text/csv");
     });
 
-    // --- Spamoor export (single YAML file) ---
+    // --- Spamoor export (single YAML file and per-scenario) ---
     function inferBaseFeeFromAvg(avgGwei, tipDefault){ const base = Math.max((avgGwei||0) - (tipDefault||2), 1); return Math.round(base*10)/10; }
     function estimateSlots(){
       if (perBlockRows.length>=2){
@@ -886,6 +987,167 @@
       const scenarios = buildScenarioObjects();
       const yaml = scenarios.map(toYaml).join("\n\n");
       dl("spamoor_scenarios.yaml", yaml, "text/yaml");
+    });
+    $("#exportSpamoorMulti").addEventListener("click", ()=>{
+      if (!summary) { runStatus.textContent = "Run profiler first."; return; }
+      const scenarios = buildScenarioObjects();
+      if (!scenarios.length){ runStatus.textContent = "No scenarios to export."; return; }
+      for (const sc of scenarios){
+        const yaml = toYaml(sc);
+        const fname = `spamoor_${sc.scenario}.yaml`;
+        dl(fname, yaml, "text/yaml");
+      }
+    });
+
+    // --- Token metadata panel ---
+    function renderTokensTable(){
+      const tbody = $("#tokensTable tbody");
+      const addrs = Object.keys(tokenStats);
+      if (!addrs.length) { tbody.innerHTML = ""; return; }
+      addrs.sort();
+      tbody.innerHTML = addrs.map((addr,idx)=>{
+        const stat = tokenStats[addr] || {tx_count:0};
+        const meta = tokenMeta[addr] || {symbol:"",name:"",decimals:null,resolved:false};
+        return `<tr>
+          <td>${idx+1}</td>
+          <td><code>${addr}</code></td>
+          <td>${meta.symbol || "?"}</td>
+          <td>${meta.name || ""}</td>
+          <td>${meta.decimals ?? ""}</td>
+          <td>${stat.tx_count || 0}</td>
+        </tr>`;
+      }).join("");
+    }
+
+    async function resolveTokenMetadata(){
+      const tokenStatus = $("#tokenStatus");
+      tokenStatus.textContent = "";
+      if (!web3) { tokenStatus.textContent = "Connect RPC first."; return; }
+      const addrs = Object.keys(tokenStats);
+      if (!addrs.length) { tokenStatus.textContent = "No token contracts observed."; return; }
+      tokenStatus.textContent = "Resolving…";
+      for (const addr of addrs){
+        if (cancelRequested) break;
+        let meta = tokenMeta[addr] || {symbol:"",name:"",decimals:null,resolved:false};
+        try {
+          const c = new web3.eth.Contract(ERC20_ABI, addr);
+          const [symbol, name, decimals] = await Promise.all([
+            c.methods.symbol().call().catch(()=>""),
+            c.methods.name().call().catch(()=>""),
+            c.methods.decimals().call().catch(()=>null)
+          ]);
+          meta.symbol = symbol || meta.symbol || "";
+          meta.name = name || meta.name || "";
+          meta.decimals = (decimals != null ? Number(decimals) : meta.decimals);
+          meta.resolved = true;
+          tokenMeta[addr] = meta;
+        } catch(e){
+          console.warn("token meta error", addr, e);
+        }
+      }
+      renderTokensTable();
+      tokenStatus.textContent = cancelRequested ? "Stopped token resolution." : "Done.";
+    }
+
+    $("#resolveTokensBtn").addEventListener("click", resolveTokenMetadata);
+    $("#exportTokensBtn").addEventListener("click", ()=>{
+      const body = Object.keys(tokenStats).sort().map(addr => ({
+        address: addr,
+        tx_count: tokenStats[addr].tx_count,
+        ...(tokenMeta[addr] || {})
+      }));
+      if (!body.length){ $("#tokenStatus").textContent = "No tokens to export."; return; }
+      dl("tokens.json", JSON.stringify(body,null,2), "application/json");
+    });
+
+    // --- CSV upload (offline mode) ---
+    function parseCsv(text){
+      const lines = text.split(/\r?\n/).filter(l=>l.trim().length);
+      if (!lines.length) return null;
+      const header = lines[0].split(",").map(x=>x.trim());
+      const rows = lines.slice(1).map(line => line.split(","));
+      return { header, rows };
+    }
+
+    function loadCsvSummary(parsed){
+      const {header, rows} = parsed;
+      const idx = {};
+      header.forEach((h,i)=>{ idx[h]=i; });
+
+      const typeCols = ["eth_transfer","contract_creation","erc20_transfer","erc721_transfer","erc1155_transfer","mixed_token_activity","other_contract_call"]
+        .filter(h => h in idx);
+
+      if (!("block_number" in idx) || !("timestamp" in idx) || !("tx_count" in idx)){
+        $("#csvStatus").textContent = "CSV missing required columns."; return;
+      }
+
+      perBlockRows = [];
+
+      let totalTx = 0;
+      const tx_types = {};
+      let minBlock = null;
+      let maxBlock = null;
+
+      for (const r of rows){
+        const bn = Number(r[idx["block_number"]]);
+        const ts = Number(r[idx["timestamp"]]);
+        const txCount = Number(r[idx["tx_count"]]);
+        if (!Number.isFinite(bn) || !Number.isFinite(ts)) continue;
+
+        const countsArr = typeCols.map(col => Number(r[idx[col]] || 0));
+        const blockGasUsed = Number(r[idx["block_gas_used"]] || 0);
+        const blockGasLimit = Number(r[idx["block_gas_limit"]] || 0);
+
+        perBlockRows.push([
+          bn,
+          ts,
+          txCount,
+          typeCols.map((col,i)=>countsArr[i] || 0).join("|"),
+          blockGasUsed,
+          blockGasLimit
+        ]);
+
+        totalTx += txCount;
+        for (let i=0;i<typeCols.length;i++){
+          const t = typeCols[i];
+          const c = countsArr[i] || 0;
+          const s = (tx_types[t] ||= { count:0, gas_used:0, avg_gas_price_gwei:0 });
+          s.count += c;
+        }
+        if (minBlock === null || bn < minBlock) minBlock = bn;
+        if (maxBlock === null || bn > maxBlock) maxBlock = bn;
+      }
+
+      summary = {
+        start_block: minBlock ?? 0,
+        end_block: maxBlock ?? 0,
+        chain_id: null,
+        block_count: (maxBlock!=null && minBlock!=null) ? (maxBlock-minBlock+1) : rows.length,
+        total_tx: totalTx,
+        tx_types,
+        offline: true
+      };
+      renderTables();
+      $("#csvStatus").textContent = "CSV loaded (offline mode).";
+      runStatus.textContent = "Viewing CSV (no RPC).";
+    }
+
+    $("#loadCsvBtn").addEventListener("click", ()=>{
+      const input = $("#csvFile");
+      const file = input.files && input.files[0];
+      if (!file){ $("#csvStatus").textContent = "Choose a CSV file first."; return; }
+      const reader = new FileReader();
+      reader.onload = (e)=>{
+        try {
+          const parsed = parseCsv(e.target.result);
+          if (!parsed){ $("#csvStatus").textContent = "Empty CSV."; return; }
+          loadCsvSummary(parsed);
+        } catch(err){
+          console.error(err);
+          $("#csvStatus").textContent = "Failed to parse CSV.";
+        }
+      };
+      reader.readAsText(file);
     });
   </script>
 </body>
