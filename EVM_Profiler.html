@@ -9,28 +9,147 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/web3@1.10.4/dist/web3.min.js"></script>
   <style>
-    :root { --bg:#0f1115; --panel:#171a21; --muted:#9aa4b2; --fg:#e5e7eb; --accent:#4f46e5; --card:#1f2430; --border:#2b3240; --good:#22c55e; --bad:#ef4444; --warn:#f59e0b; }
+    :root {
+      --bg:#0f1115;
+      --panel:#171a21;
+      --muted:#9aa4b2;
+      --fg:#e5e7eb;
+      --accent:#4f46e5;
+      --accent-soft:#6366f1;
+      --card:#1f2430;
+      --border:#2b3240;
+      --good:#22c55e;
+      --bad:#ef4444;
+      --warn:#f59e0b;
+    }
     * { box-sizing: border-box; }
-    body { margin:0; padding:0 16px 60px; font-family:"Inter",system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; background:linear-gradient(180deg,#0f1115,#0b0d11); color:var(--fg); }
-    header { position:sticky; top:0; background:rgba(15,17,21,.8); backdrop-filter:blur(10px); z-index:10; padding:14px 0 10px; }
+    body {
+      margin:0;
+      padding:0 16px 60px;
+      font-family:"Inter",system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      background:linear-gradient(180deg,#0f1115,#0b0d11);
+      color:var(--fg);
+    }
+    header {
+      position:sticky;
+      top:0;
+      background:rgba(15,17,21,.88);
+      backdrop-filter:blur(10px);
+      z-index:10;
+      padding:14px 0 10px;
+    }
     .wrap { max-width: 1240px; margin: 0 auto; }
-    h1 { margin:8px 0 0; font-size:22px; font-weight:700; letter-spacing:.2px; }
-    p.small { color:var(--muted); margin:6px 0 0; font-size:13px; }
-    .toolbar, .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+    h1 {
+      margin:8px 0 0;
+      font-size:22px;
+      font-weight:700;
+      letter-spacing:.2px;
+    }
+    p.small {
+      color:var(--muted);
+      margin:6px 0 0;
+      font-size:13px;
+    }
+    .toolbar, .row {
+      display:flex;
+      gap:10px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
     .toolbar { margin:14px 0 0; }
-    .box { display:flex; align-items:center; gap:8px; padding:10px 12px; border:1px solid var(--border); border-radius:10px; background:var(--panel); }
-    input[type="text"], input[type="number"], select, textarea { padding:8px 10px; border-radius:8px; border:1px solid var(--border); background:#0c0f14; color:var(--fg); }
+    .box {
+      display:flex;
+      align-items:center;
+      gap:8px;
+      padding:12px 12px 14px;
+      border:1px solid var(--border);
+      border-radius:12px;
+      background:var(--panel);
+    }
+    input[type="text"], input[type="number"], select, textarea {
+      padding:8px 10px;
+      border-radius:8px;
+      border:1px solid var(--border);
+      background:#0c0f14;
+      color:var(--fg);
+      font-size:13px;
+    }
     input[type="text"] { width:520px; max-width:70vw; }
-    textarea { width:100%; min-height: 72px; }
-    .btn { border:1px solid var(--border); background:var(--panel); color:var(--fg); padding:10px 12px; border-radius:10px; cursor:pointer; }
-    .btn.primary { background:var(--accent); border-color:#3f3ab6; }
-    .btn.danger { background:var(--bad); border-color:#b91c1c; }
+    textarea { width:100%; min-height: 72px; resize:vertical; }
+    .btn {
+      border:1px solid var(--border);
+      background:var(--panel);
+      color:var(--fg);
+      padding:9px 12px;
+      border-radius:10px;
+      cursor:pointer;
+      font-size:13px;
+      transition:background .12s ease, transform .05s ease, box-shadow .15s ease, border-color .12s ease;
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+    }
+    .btn:hover:not(:disabled) {
+      background:#202535;
+      transform:translateY(-0.5px);
+      box-shadow:0 0 0 1px rgba(148,163,184,.2);
+    }
+    .btn:disabled {
+      opacity:0.45;
+      cursor:default;
+      box-shadow:none;
+      transform:none;
+    }
+
+    /* Emphasized RUN / STOP */
+    .btn.run-main {
+      background:var(--accent);
+      border-color:#3730a3;
+      font-weight:600;
+      padding:11px 18px;
+      border-radius:999px;
+      box-shadow:0 0 0 1px rgba(129,140,248,.35), 0 8px 18px rgba(79,70,229,.45);
+    }
+    .btn.run-main:hover:not(:disabled) {
+      background:var(--accent-soft);
+      box-shadow:0 0 0 1px rgba(191,219,254,.6), 0 9px 22px rgba(79,70,229,.65);
+      transform:translateY(-0.5px);
+    }
+    .btn.stop-main {
+      background:var(--bad);
+      border-color:#b91c1c;
+      font-weight:600;
+      padding:11px 16px;
+      border-radius:999px;
+      box-shadow:0 0 0 1px rgba(248,113,113,.6), 0 6px 16px rgba(239,68,68,.6);
+    }
+    .btn.stop-main:hover:not(:disabled) {
+      background:#f97373;
+      box-shadow:0 0 0 1px rgba(254,202,202,.8), 0 8px 18px rgba(239,68,68,.8);
+      transform:translateY(-0.5px);
+    }
+
     .status { color:var(--muted); font-size:12px; }
     .grid { display:grid; grid-template-columns: 1fr; gap:16px; margin-top:18px; }
-    .panel { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:16px; }
+    .panel {
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius:14px;
+      padding:16px;
+    }
     .panel h2 { margin:0 0 10px; font-size:18px; }
-    .kpis { display:grid; grid-template-columns: repeat(auto-fill, minmax(200px,1fr)); gap:12px; margin-top:12px; }
-    .kpi { background: var(--card); border:1px solid var(--border); border-radius:14px; padding:14px; }
+    .kpis {
+      display:grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px,1fr));
+      gap:12px;
+      margin-top:12px;
+    }
+    .kpi {
+      background: var(--card);
+      border:1px solid var(--border);
+      border-radius:14px;
+      padding:14px;
+    }
     .kpi .label { color: var(--muted); font-size:12px; }
     .kpi .value { font-size:22px; font-weight:700; margin-top:4px; }
     .flex { display:flex; gap:16px; flex-wrap: wrap; }
@@ -41,18 +160,53 @@
     tr:hover { background: rgba(255,255,255,0.03); }
     .pill { display:inline-block; padding:3px 8px; border-radius:999px; background: #0e7490; font-size:12px; }
     .muted { color: var(--muted); }
-    .progress { height: 10px; background: #0c0f14; border:1px solid var(--border); border-radius: 8px; overflow: hidden; }
-    .progress > div { height: 100%; background: var(--accent); width: 0%; transition: width .2s ease; }
+
+    /* More prominent progress bar */
+    .progress {
+      height: 16px;
+      background: radial-gradient(circle at top, #020617, #020617) padding-box;
+      border:1px solid #1f2937;
+      border-radius:999px;
+      overflow:hidden;
+      box-shadow:0 0 0 1px rgba(15,23,42,.7), 0 0 12px rgba(59,130,246,.4) inset;
+    }
+    .progress > div {
+      height: 100%;
+      background: linear-gradient(90deg,#4f46e5,#22c55e);
+      width: 0%;
+      transition: width .2s ease;
+      box-shadow:0 0 14px rgba(129,140,248,.9);
+    }
+
     .sep { height: 12px; }
     .heartbeat { display:inline-flex; align-items:center; gap:6px; margin-left:6px; }
-    .dot { width:10px; height:10px; border-radius:50%; background: var(--bad); box-shadow: 0 0 0 0 rgba(34,197,94,0.7); transition: background .2s ease, box-shadow .2s ease; }
-    .dot.ok { background: var(--good); box-shadow: 0 0 0 8px rgba(34,197,94,0); animation: pulse 1.5s infinite; }
-    .dot.warn { background: var(--warn); box-shadow: none; animation: none; }
-    @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(34,197,94,.55);} 70% { box-shadow: 0 0 0 12px rgba(34,197,94,0);} 100% { box-shadow: 0 0 0 0 rgba(34,197,94,0);} }
+    .dot {
+      width:10px; height:10px; border-radius:50%;
+      background: var(--bad);
+      box-shadow: 0 0 0 0 rgba(34,197,94,0.7);
+      transition: background .2s ease, box-shadow .2s ease;
+    }
+    .dot.ok {
+      background: var(--good);
+      box-shadow: 0 0 0 8px rgba(34,197,94,0);
+      animation: pulse 1.5s infinite;
+    }
+    .dot.warn {
+      background: var(--warn);
+      box-shadow: none;
+      animation: none;
+    }
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(34,197,94,.55);}
+      70% { box-shadow: 0 0 0 12px rgba(34,197,94,0);}
+      100% { box-shadow: 0 0 0 0 rgba(34,197,94,0);}
+    }
     .micro { font-size:11px; color:var(--muted); }
     .spacer { flex:1; }
     .grid-2 { display:grid; grid-template-columns: 1fr 1fr; gap:14px; }
-    @media (max-width: 1024px){ .grid-2 { grid-template-columns: 1fr; } }
+    @media (max-width: 1024px){
+      .grid-2 { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
@@ -90,8 +244,9 @@
             <label class="inline"><input id="logsOnly" type="checkbox"> Logs-only</label>
             <label class="inline"><input id="dualPass" type="checkbox"> Dual-pass</label>
             <div>Tx cap</div><input id="txCap" type="number" value="" placeholder="optional" style="width:120px;">
-            <button id="runBtn" class="btn primary">Run</button>
-            <button id="stopBtn" class="btn danger" disabled>Stop</button>
+            <!-- Emphasized RUN / STOP buttons -->
+            <button id="runBtn" class="btn run-main">▶ Run</button>
+            <button id="stopBtn" class="btn stop-main" disabled>■ Stop</button>
           </div>
           <div class="row">
             <strong>Preset</strong>
@@ -99,7 +254,7 @@
             <button id="savePreset" class="btn">Save</button>
             <select id="presetSelect" style="min-width:240px;"></select>
             <button id="loadPreset" class="btn">Load</button>
-            <button id="deletePreset" class="btn danger">Delete</button>
+            <button id="deletePreset" class="btn">Delete</button>
             <span id="presetStatus" class="status"></span>
           </div>
           <div class="row">
@@ -115,7 +270,9 @@
             <button id="exportSpamoorZip" class="btn">ZIP</button>
             <span id="runStatus" class="status"></span>
           </div>
-          <div class="progress" style="flex:1; max-width: 860px;"><div id="progressbar"></div></div>
+          <div class="progress" style="flex:1; max-width: 860px; margin-top:4px;">
+            <div id="progressbar"></div>
+          </div>
           <div class="micro" id="blockProgressText"></div>
           <div class="micro" id="finishTimeText"></div>
         </div>
@@ -139,7 +296,18 @@
       <div class="panel">
         <h2>Tables</h2>
         <div style="overflow:auto;">
-          <table id="typesTable"><thead><tr><th>Type</th><th>Count</th><th>Gas used</th><th>Avg gas price (gwei)</th><th>ETH value sum</th></tr></thead><tbody></tbody></table>
+          <table id="typesTable">
+            <thead>
+              <tr>
+                <th>Type</th>
+                <th>Count</th>
+                <th>Gas used</th>
+                <th>Avg gas price (gwei)</th>
+                <th>ETH value sum</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
         </div>
       </div>
 
@@ -177,13 +345,13 @@
     </section>
   </main>
 
+  <!-- JS: logic identical to previous version, only UI styling changed -->
   <script>
     const $ = (sel) => document.querySelector(sel);
     const storageKey = "evm-profiler-ui-v3";
     const presetsKey = "evm-profiler-presets";
     const tokenKey = "evm-profiler-token-cache";
 
-    // Persist & restore settings
     const fields = ["rpcInput","providerProfile","startBlock","endBlock","pageSize","concurrency","skipContract","logsOnly","dualPass","txCap"];
     function collectSettings() {
       const data = {};
@@ -210,7 +378,6 @@
     document.addEventListener("change", (e)=>{ if (e.target && fields.includes(e.target.id)) saveSettings(); });
     document.addEventListener("input", (e)=>{ if (e.target && fields.includes(e.target.id)) saveSettings(); });
 
-    // Presets (save/load/delete)
     const presetName = $("#presetName");
     const presetSelect = $("#presetSelect");
     const presetStatus = $("#presetStatus");
@@ -258,7 +425,6 @@
     $("#deletePreset").addEventListener("click", deletePreset);
     loadPresetList();
 
-    // App state
     let web3 = null;
     let summary = null;
     let perBlockRows = [];
@@ -287,7 +453,10 @@
     }
     heartbeatLoop();
 
-    function updateProgress(cur,total){ const pct=Math.max(0,Math.min(100,Math.round((cur/Math.max(1,total))*100))); progressbar.style.width=pct+"%"; }
+    function updateProgress(cur,total){
+      const pct=Math.max(0,Math.min(100,Math.round((cur/Math.max(1,total))*100)));
+      progressbar.style.width=pct+"%";
+    }
     function fmtETA(sec){
       if (sec==null || !isFinite(sec)) return "";
       const d = new Date(Date.now() + Math.max(0, sec*1000));
@@ -304,7 +473,6 @@
     }
     function disableRunUI(disabled){ runBtn.disabled=disabled; stopBtn.disabled=!disabled; }
 
-    // Provider presets with RPS & backoff caps
     const presets = {
       custom: { rps: 8, maxRetries: 3, backoffBase: 250, backoffMaxMs: 4000 },
       infura:   { logsStep: 2000, page: 150, conc: 6, rps: 10, maxRetries: 5, backoffBase: 250, backoffMaxMs: 5000 },
@@ -323,17 +491,35 @@
       saveSettings();
     });
 
-    // Simple rate limiter + retry/backoff
     class RateLimiter {
       constructor(rps){ this.minInterval = Math.max(1, Math.floor(1000 / Math.max(1, rps||8))); this.queue = []; this.active = false; this.last = 0; }
       schedule(fn){ return new Promise((resolve,reject)=>{ this.queue.push({fn,resolve,reject}); this.pump(); }); }
-      pump(){ if (this.active) return; this.active = true; const step=()=>{ if (!this.queue.length){ this.active=false; return; } const now=Date.now(); const wait=Math.max(0, this.minInterval - (now - this.last)); setTimeout(()=>{ const item=this.queue.shift(); this.last=Date.now(); Promise.resolve().then(item.fn).then(item.resolve).catch(item.reject).finally(()=>step()); }, wait); }; step(); }
+      pump(){
+        if (this.active) return;
+        this.active = true;
+        const step=()=>{
+          if (!this.queue.length){ this.active=false; return; }
+          const now=Date.now();
+          const wait=Math.max(0, this.minInterval - (now - this.last));
+          setTimeout(()=>{
+            const item=this.queue.shift();
+            this.last=Date.now();
+            Promise.resolve().then(item.fn).then(item.resolve).catch(item.reject).finally(()=>step());
+          }, wait);
+        };
+        step();
+      }
     }
     function jitter(ms){ return ms + Math.floor(Math.random()*Math.min(250, ms/2)); }
     async function withRetry(fn, {maxRetries=4, backoffBase=200, backoffMaxMs=5000}={}){
       let attempt=0; let lastErr=null;
       while (attempt<=maxRetries){
-        try { return await fn(); } catch (e){ lastErr=e; const delay=Math.min(backoffMaxMs, Math.pow(2,attempt)*backoffBase); await new Promise(r=>setTimeout(r, jitter(delay))); attempt++; }
+        try { return await fn(); } catch (e){
+          lastErr=e;
+          const delay=Math.min(backoffMaxMs, Math.pow(2,attempt)*backoffBase);
+          await new Promise(r=>setTimeout(r, jitter(delay)));
+          attempt++;
+        }
       }
       throw lastErr;
     }
@@ -348,7 +534,17 @@
     const rpcInput = $("#rpcInput");
     const connectBtn = $("#connectBtn");
     const rpcStatus = $("#rpcStatus");
-    async function connectRPC(){ const url=rpcInput.value.trim(); if(!url){ rpcStatus.textContent="Enter an RPC URL."; return false; } updateLimiter(); web3=new Web3(new Web3.providers.HttpProvider(url,{timeout:60000})); const ok=await withRetry(()=> web3.eth.net.isListening(), {maxRetries:2, backoffBase:200, backoffMaxMs:2000}).catch(()=>false); rpcStatus.textContent= ok ? "Connected" : "Failed to connect"; rpcStatus.style.color= ok ? "#22c55e" : "#ef4444"; if (ok) beat("rpc ok"); return ok; }
+    async function connectRPC(){
+      const url=rpcInput.value.trim();
+      if(!url){ rpcStatus.textContent="Enter an RPC URL."; return false; }
+      updateLimiter();
+      web3=new Web3(new Web3.providers.HttpProvider(url,{timeout:60000}));
+      const ok=await withRetry(()=> web3.eth.net.isListening(), {maxRetries:2, backoffBase:200, backoffMaxMs:2000}).catch(()=>false);
+      rpcStatus.textContent= ok ? "Connected" : "Failed to connect";
+      rpcStatus.style.color= ok ? "#22c55e" : "#ef4444";
+      if (ok) beat("rpc ok");
+      return ok;
+    }
     connectBtn.addEventListener("click", connectRPC);
 
     const startBlockEl = $("#startBlock");
@@ -358,7 +554,6 @@
     const skipContract = $("#skipContract");
     const txCap = $("#txCap");
 
-    // charts
     let txCountChart = null;
     let txShareChart = null;
     function renderCharts(){
@@ -408,7 +603,6 @@
       renderCharts();
     }
 
-    // token tracking
     const tokensSeen = new Set();
     let tokenCache = {};
     function loadTokenCache(){ try { tokenCache = JSON.parse(localStorage.getItem(tokenKey)||"{}"); } catch { tokenCache = {}; } }
@@ -431,7 +625,6 @@
       setBlockProgress(lastBlock, startBlockVal + totalBlocks - 1, remaining);
     }
 
-    // Logs scan
     const SIG_TRANSFER = Web3.utils.keccak256("Transfer(address,address,uint256)").toLowerCase();
     const SIG_ERC1155_SINGLE = Web3.utils.keccak256("TransferSingle(address,address,address,uint256,uint256)").toLowerCase();
     const SIG_ERC1155_BATCH = Web3.utils.keccak256("TransferBatch(address,address,address,uint256[],uint256[])").toLowerCase();
@@ -485,7 +678,6 @@
       tokensSeen.clear();
       perBlockRows = [];
 
-      // Pass 1
       let tokenHashSet = null;
       if (logsOnly.checked || dualPass.checked) {
         runStatus.textContent = "Pass 1: logs scan…";
@@ -513,12 +705,11 @@
           renderTables();
           runStatus.textContent="Logs scan complete";
           disableRunUI(false);
-          await autoResolveTopTokens(); // small, best-effort
+          await autoResolveTopTokens();
           return;
         }
       }
 
-      // Pass 2
       runStatus.textContent = dualPass.checked ? "Pass 2: receipts/classify…" : "Running (full)…";
       let totalTx=0;
       let doneBlocks = 0;
@@ -529,7 +720,8 @@
         const blocks = await Promise.all(blockNums.map(b => rpcCall(web3.eth.getBlock, [b, true]).catch(()=>null)));
         if(!doSkip){
           const addrs=[]; for(const blk of blocks){ if(!blk) continue; for(const tx of (blk.transactions||[])){ if(tx.to){ const a=tx.to.toLowerCase(); if(codeCache[a]===undefined) addrs.push(a); } } }
-          const uniq=[...new Set(addrs)]; await Promise.all(uniq.map(a=> rpcCall(web3.eth.getCode, [a]).then(c=>{ codeCache[a]=!!(c&&c!=="0x"&&c!=="0x00");}).catch(()=>{codeCache[a]=true;})));
+          const uniq=[...new Set(addrs)];
+          await Promise.all(uniq.map(a=> rpcCall(web3.eth.getCode, [a]).then(c=>{ codeCache[a]=!!(c&&c!=="0x"&&c!=="0x00");}).catch(()=>{codeCache[a]=true;})));
         }
         for(const blk of blocks){
           if (cancelRequested) break;
@@ -616,11 +808,19 @@
     $("#runBtn").addEventListener("click", runProfiler);
     $("#stopBtn").addEventListener("click", stopRun);
 
-    // Download helpers
-    function dl(name, text, mime="application/octet-stream"){ const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([text],{type:mime})); a.download=name; document.body.appendChild(a); a.click(); a.remove(); }
+    function dl(name, text, mime="application/octet-stream"){
+      const a=document.createElement("a");
+      a.href=URL.createObjectURL(new Blob([text],{type:mime}));
+      a.download=name;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    }
 
-    // Exports
-    $("#exportJson").addEventListener("click", ()=>{ if(!summary){ runStatus.textContent="Nothing to export yet."; return; } dl("summary.json", JSON.stringify(summary,null,2), "application/json"); });
+    $("#exportJson").addEventListener("click", ()=>{
+      if(!summary){ runStatus.textContent="Nothing to export yet."; return; }
+      dl("summary.json", JSON.stringify(summary,null,2), "application/json");
+    });
     $("#exportCsv").addEventListener("click", ()=>{
       if(!perBlockRows.length){ runStatus.textContent="No per-block data yet."; return; }
       const header=["block_number","timestamp","tx_count","eth_transfer","contract_creation","erc20_transfer","erc721_transfer","erc1155_transfer","other_contract_call","mixed_token_activity","other_eoa_call","block_gas_used","block_gas_limit"];
@@ -639,10 +839,23 @@
       dl("per_block.ndjson", lines.join("\n"), "application/x-ndjson");
     });
 
-    // Spamoor export (single / multiple + ZIP)
     function inferBaseFeeFromAvg(avgGwei, tipDefault){ const base = Math.max((avgGwei||0) - (tipDefault||2), 1); return Math.round(base*10)/10; }
-    function estimateSlots(){ if (perBlockRows.length>=2){ const first=perBlockRows[0][1]; const last=perBlockRows[perBlockRows.length-1][1]; const dur = Math.max(1, (last-first)); return Math.max(1, Math.round(dur/12)); } const blocks = (summary?.block_count)||1; return Math.max(1, Math.round(blocks)); }
-    function mapTypeToScenario(type){ if (type==="eth_transfer") return "eoatx"; if (type==="erc20_transfer") return "erctx"; if (type==="contract_creation") return "deploytx"; return "calltx"; }
+    function estimateSlots(){
+      if (perBlockRows.length>=2){
+        const first=perBlockRows[0][1];
+        const last=perBlockRows[perBlockRows.length-1][1];
+        const dur = Math.max(1, (last-first));
+        return Math.max(1, Math.round(dur/12));
+      }
+      const blocks = (summary?.block_count)||1;
+      return Math.max(1, Math.round(blocks));
+    }
+    function mapTypeToScenario(type){
+      if (type==="eth_transfer") return "eoatx";
+      if (type==="erc20_transfer") return "erctx";
+      if (type==="contract_creation") return "deploytx";
+      return "calltx";
+    }
     function buildScenarioObjects(){
       const tip = 2;
       const namePrefix = "profiled";
@@ -671,15 +884,57 @@
       const scenarios = [];
       for (const [scenario, info] of Object.entries(agg)){
         if (scenario === "calltx") continue;
-        scenarios.push({ scenario, name: `${namePrefix}-${scenario}`, description: `Auto-generated from EVM Profiler. Types: ${info.types.map(x=>x.type).join(", ")}`, config: { seed, refill_amount: refillAmount, refill_balance: refillBalance, refill_interval: refillInterval, throughput: Math.round(info.throughput), max_pending: Math.max(1, Math.round((info.throughput||0) * pendingMult)), max_wallets: maxWallets, base_fee: info.base_gwei || 1, tip_fee: tip, ...(scenario==="eoatx" ? { amount: ethAmount } : {}) } });
+        scenarios.push({
+          scenario,
+          name: `${namePrefix}-${scenario}`,
+          description: `Auto-generated from EVM Profiler. Types: ${info.types.map(x=>x.type).join(", ")}`,
+          config: {
+            seed,
+            refill_amount: refillAmount,
+            refill_balance: refillBalance,
+            refill_interval: refillInterval,
+            throughput: Math.round(info.throughput),
+            max_pending: Math.max(1, Math.round((info.throughput||0) * pendingMult)),
+            max_wallets: maxWallets,
+            base_fee: info.base_gwei || 1,
+            tip_fee: tip,
+            ...(scenario==="eoatx" ? { amount: ethAmount } : {})
+          }
+        });
       }
       const callAgg = agg["calltx"];
       if (callAgg) {
-        scenarios.push({ scenario: "calltx", name: `${namePrefix}-calltx`, description: `Auto-generated from EVM Profiler. Types: ${callAgg.types.map(x=>x.type).join(", ")}`, config: { seed, refill_amount: refillAmount, refill_balance: refillBalance, refill_interval: refillInterval, throughput: Math.round(callAgg.throughput), max_pending: Math.max(1, Math.round((callAgg.throughput||0) * pendingMult)), max_wallets: maxWallets, base_fee: callAgg.base_gwei || 1, tip_fee: tip } });
+        scenarios.push({
+          scenario: "calltx",
+          name: `${namePrefix}-calltx`,
+          description: `Auto-generated from EVM Profiler. Types: ${callAgg.types.map(x=>x.type).join(", ")}`,
+          config: {
+            seed,
+            refill_amount: refillAmount,
+            refill_balance: refillBalance,
+            refill_interval: refillInterval,
+            throughput: Math.round(callAgg.throughput),
+            max_pending: Math.max(1, Math.round((callAgg.throughput||0) * pendingMult)),
+            max_wallets: maxWallets,
+            base_fee: callAgg.base_gwei || 1,
+            tip_fee: tip
+          }
+        });
       }
       return scenarios;
     }
-    function toYaml(obj){ const L=[]; L.push(`- scenario: ${obj.scenario}`); L.push(`  name: "${obj.name}"`); L.push(`  description: "${obj.description.replace(/"/g,'\\"')}"`); L.push(`  config:`); const cfg=obj.config||{}; for(const [k,v] of Object.entries(cfg)){ L.push(`    ${k}: ${v}`); } return L.join("\n"); }
+    function toYaml(obj){
+      const L=[];
+      L.push(`- scenario: ${obj.scenario}`);
+      L.push(`  name: "${obj.name}"`);
+      L.push(`  description: "${obj.description.replace(/"/g,'\\"')}"`);
+      L.push(`  config:`);
+      const cfg=obj.config||{};
+      for(const [k,v] of Object.entries(cfg)){
+        L.push(`    ${k}: ${v}`);
+      }
+      return L.join("\n");
+    }
     $("#exportSpamoor").addEventListener("click", ()=>{
       if (!summary) { runStatus.textContent = "Run profiler first."; return; }
       const scenarios = buildScenarioObjects();
@@ -698,7 +953,78 @@
     function strToUint8(s){ const enc = new TextEncoder(); return enc.encode(s); }
     function numToBytesLE(n, len){ const a=new Uint8Array(len); for (let i=0;i<len;i++){ a[i]=n & 0xff; n>>=8; } return a; }
     function crc32(buf){ let c = ~0; for (let i=0;i<buf.length;i++){ c ^= buf[i]; for (let k=0;k<8;k++){ c = (c>>>1) ^ (0xEDB88320 & (~(c&1)+1)); } } return ~c >>> 0; }
-    function makeZip(files){ const LFH_SIG = 0x04034b50, CD_SIG = 0x02014b50, EOCD_SIG=0x06054b50; let chunks = []; let central = []; let offset = 0; for (const f of files){ const nameBytes = strToUint8(f.name); const data = f.data; const crc = crc32(data); const lfh = new Uint8Array(30 + nameBytes.length); let p=0; lfh.set(numToBytesLE(LFH_SIG,4), p); p+=4; lfh.set(numToBytesLE(20,2), p); p+=2; lfh.set(numToBytesLE(0,2), p); p+=2; lfh.set(numToBytesLE(0,2), p); p+=2; lfh.set(numToBytesLE(0,2), p); p+=2; lfh.set(numToBytesLE(0,2), p); p+=2; lfh.set(numToBytesLE(crc,4), p); p+=4; lfh.set(numToBytesLE(data.length,4), p); p+=4; lfh.set(numToBytesLE(data.length,4), p); p+=4; lfh.set(numToBytesLE(nameBytes.length,2), p); p+=2; lfh.set(numToBytesLE(0,2), p); p+=2; lfh.set(nameBytes, p); p+=nameBytes.length; chunks.push(lfh, data); const cdh = new Uint8Array(46 + nameBytes.length); p=0; cdh.set(numToBytesLE(CD_SIG,4), p); p+=4; cdh.set(numToBytesLE(20,2), p); p+=2; cdh.set(numToBytesLE(20,2), p); p+=2; cdh.set(numToBytesLE(0,2), p); p+=2; cdh.set(numToBytesLE(0,2), p); p+=2; cdh.set(numToBytesLE(0,2), p); p+=2; cdh.set(numToBytesLE(0,2), p); p+=2; cdh.set(numToBytesLE(0,2), p); p+=2; cdh.set(numToBytesLE(offset,4), p); p+=4; cdh.set(nameBytes, p); p+=nameBytes.length; central.push({buf: cdh}); offset += lfh.length + data.length; } const centralBlob = central.reduce((acc, x)=>{ const n = new Uint8Array(acc.length + x.buf.length); n.set(acc,0); n.set(x.buf, acc.length); return n; }, new Uint8Array(0)); const eocd = new Uint8Array(22); let p=0; eocd.set(numToBytesLE(EOCD_SIG,4), p); p+=4; eocd.set(numToBytesLE(0,2), p); p+=2; eocd.set(numToBytesLE(0,2), p); p+=2; const entries = central.length; eocd.set(numToBytesLE(entries,2), p); p+=2; eocd.set(numToBytesLE(entries,2), p); p+=2; eocd.set(numToBytesLE(centralBlob.length,4), p); p+=4; const centralOffset = offset; eocd.set(numToBytesLE(centralOffset,4), p); p+=4; eocd.set(numToBytesLE(0,2), p); p+=2; let totalLen = offset + centralBlob.length + eocd.length; const out = new Uint8Array(totalLen); let w=0; for (const c of chunks) { out.set(c, w); w += c.length; } out.set(centralBlob, w); w += centralBlob.length; out.set(eocd, w); return new Blob([out], {type: "application/zip"}); }
+    function makeZip(files){
+      const LFH_SIG = 0x04034b50, CD_SIG = 0x02014b50, EOCD_SIG=0x06054b50;
+      let chunks = []; let central = []; let offset = 0;
+      for (const f of files){
+        const nameBytes = strToUint8(f.name);
+        const data = f.data;
+        const crc = crc32(data);
+        const lfh = new Uint8Array(30 + nameBytes.length);
+        let p=0;
+        lfh.set(numToBytesLE(LFH_SIG,4), p); p+=4;
+        lfh.set(numToBytesLE(20,2), p); p+=2;
+        lfh.set(numToBytesLE(0,2), p); p+=2;
+        lfh.set(numToBytesLE(0,2), p); p+=2;
+        lfh.set(numToBytesLE(0,2), p); p+=2;
+        lfh.set(numToBytesLE(0,2), p); p+=2;
+        lfh.set(numToBytesLE(crc,4), p); p+=4;
+        lfh.set(numToBytesLE(data.length,4), p); p+=4;
+        lfh.set(numToBytesLE(data.length,4), p); p+=4;
+        lfh.set(numToBytesLE(nameBytes.length,2), p); p+=2;
+        lfh.set(numToBytesLE(0,2), p); p+=2;
+        lfh.set(nameBytes, p); p+=nameBytes.length;
+        chunks.push(lfh, data);
+
+        const cdh = new Uint8Array(46 + nameBytes.length);
+        p=0;
+        cdh.set(numToBytesLE(CD_SIG,4), p); p+=4;
+        cdh.set(numToBytesLE(20,2), p); p+=2;
+        cdh.set(numToBytesLE(20,2), p); p+=2;
+        cdh.set(numToBytesLE(0,2), p); p+=2;
+        cdh.set(numToBytesLE(0,2), p); p+=2;
+        cdh.set(numToBytesLE(0,2), p); p+=2;
+        cdh.set(numToBytesLE(0,2), p); p+=2;
+        cdh.set(numToBytesLE(0,2), p); p+=2;
+        cdh.set(numToBytesLE(crc,4), p); p+=4;
+        cdh.set(numToBytesLE(data.length,4), p); p+=4;
+        cdh.set(numToBytesLE(data.length,4), p); p+=4;
+        cdh.set(numToBytesLE(nameBytes.length,2), p); p+=2;
+        cdh.set(numToBytesLE(0,2), p); p+=2;
+        cdh.set(numToBytesLE(0,2), p); p+=2;
+        cdh.set(numToBytesLE(0,2), p); p+=2;
+        cdh.set(numToBytesLE(0,2), p); p+=2;
+        cdh.set(numToBytesLE(offset,4), p); p+=4;
+        cdh.set(nameBytes, p); p+=nameBytes.length;
+        central.push({buf: cdh});
+        offset += lfh.length + data.length;
+      }
+      const centralBlob = central.reduce((acc, x)=>{
+        const n = new Uint8Array(acc.length + x.buf.length);
+        n.set(acc,0);
+        n.set(x.buf, acc.length);
+        return n;
+      }, new Uint8Array(0));
+      const eocd = new Uint8Array(22); let p=0;
+      eocd.set(numToBytesLE(EOCD_SIG,4), p); p+=4;
+      eocd.set(numToBytesLE(0,2), p); p+=2;
+      eocd.set(numToBytesLE(0,2), p); p+=2;
+      const entries = central.length;
+      eocd.set(numToBytesLE(entries,2), p); p+=2;
+      eocd.set(numToBytesLE(entries,2), p); p+=2;
+      eocd.set(numToBytesLE(centralBlob.length,4), p); p+=4;
+      const centralOffset = offset;
+      eocd.set(numToBytesLE(centralOffset,4), p); p+=4;
+      eocd.set(numToBytesLE(0,2), p); p+=2;
+
+      let totalLen = offset + centralBlob.length + eocd.length;
+      const out = new Uint8Array(totalLen);
+      let w=0;
+      for (const c of chunks) { out.set(c, w); w += c.length; }
+      out.set(centralBlob, w); w += centralBlob.length;
+      out.set(eocd, w);
+      return new Blob([out], {type: "application/zip"});
+    }
     $("#exportSpamoorZip").addEventListener("click", ()=>{
       if (!summary) { runStatus.textContent = "Run profiler first."; return; }
       const scenarios = buildScenarioObjects();
@@ -707,7 +1033,6 @@
       const a = document.createElement("a"); a.href = URL.createObjectURL(zip); a.download = "spamoor_scenarios.zip"; document.body.appendChild(a); a.click(); a.remove();
     });
 
-    // ---- Token resolution panel logic ----
     const tokenInput = $("#tokenInput");
     const tokenStatus = $("#tokenStatus");
     $("#collectTokens").addEventListener("click", ()=>{
@@ -715,7 +1040,10 @@
       tokenInput.value = arr.join("\n");
     });
 
-    function renderTokenStatus(msg, ok=true){ tokenStatus.textContent = msg; tokenStatus.style.color = ok ? "#9aa4b2" : "#ef4444"; }
+    function renderTokenStatus(msg, ok=true){
+      tokenStatus.textContent = msg;
+      tokenStatus.style.color = ok ? "#9aa4b2" : "#ef4444";
+    }
 
     const ERC20_ABI = [
       {"constant":true,"inputs":[],"name":"name","outputs":[{"name":"","type":"string"}],"type":"function"},
@@ -789,7 +1117,6 @@
       e.target.value = "";
     });
 
-    // Auto resolve top tokens after a run (best-effort, small sample)
     async function autoResolveTopTokens(){
       if (!web3) return;
       const addrs = Array.from(tokensSeen || [])
