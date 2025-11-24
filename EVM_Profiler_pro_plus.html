@@ -1,0 +1,892 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>EVM Profiler — Pro Plus</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/web3@1.10.4/dist/web3.min.js"></script>
+  <style>
+    :root {
+      --bg:#0f1115;
+      --panel:#171a21;
+      --muted:#9aa4b2;
+      --fg:#e5e7eb;
+      --accent:#4f46e5;
+      --accent-soft:#6366f1;
+      --card:#1f2430;
+      --border:#2b3240;
+      --good:#22c55e;
+      --bad:#ef4444;
+      --warn:#f59e0b;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin:0;
+      padding:0 16px 60px;
+      font-family:"Inter",system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      background:linear-gradient(180deg,#0f1115,#0b0d11);
+      color:var(--fg);
+    }
+    header {
+      position:sticky;
+      top:0;
+      background:rgba(15,17,21,.88);
+      backdrop-filter:blur(10px);
+      z-index:10;
+      padding:14px 0 10px;
+    }
+    .wrap { max-width: 1240px; margin: 0 auto; }
+    h1 {
+      margin:8px 0 0;
+      font-size:22px;
+      font-weight:700;
+      letter-spacing:.2px;
+    }
+    p.small {
+      color:var(--muted);
+      margin:6px 0 0;
+      font-size:13px;
+    }
+    .toolbar, .row {
+      display:flex;
+      gap:10px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+    .toolbar { margin:14px 0 0; }
+    .box {
+      display:flex;
+      align-items:center;
+      gap:8px;
+      padding:12px 12px 14px;
+      border:1px solid var(--border);
+      border-radius:12px;
+      background:var(--panel);
+    }
+    input[type="text"], input[type="number"], select {
+      padding:8px 10px;
+      border-radius:8px;
+      border:1px solid var(--border);
+      background:#0c0f14;
+      color:var(--fg);
+      font-size:13px;
+    }
+    input[type="text"] { width:520px; max-width:70vw; }
+    .btn {
+      border:1px solid var(--border);
+      background:var(--panel);
+      color:var(--fg);
+      padding:9px 12px;
+      border-radius:10px;
+      cursor:pointer;
+      font-size:13px;
+      transition:background .12s ease, transform .05s ease, box-shadow .15s ease, border-color .12s ease;
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+    }
+    .btn:hover:not(:disabled) {
+      background:#202535;
+      transform:translateY(-0.5px);
+      box-shadow:0 0 0 1px rgba(148,163,184,.2);
+    }
+    .btn:disabled {
+      opacity:0.45;
+      cursor:default;
+      box-shadow:none;
+      transform:none;
+    }
+    .btn.run-main {
+      background:var(--accent);
+      border-color:#3730a3;
+      font-weight:600;
+      padding:11px 18px;
+      border-radius:999px;
+      box-shadow:0 0 0 1px rgba(129,140,248,.35), 0 8px 18px rgba(79,70,229,.45);
+    }
+    .btn.run-main:hover:not(:disabled) {
+      background:var(--accent-soft);
+      box-shadow:0 0 0 1px rgba(191,219,254,.6), 0 9px 22px rgba(79,70,229,.65);
+      transform:translateY(-0.5px);
+    }
+    .btn.stop-main {
+      background:var(--bad);
+      border-color:#b91c1c;
+      font-weight:600;
+      padding:11px 16px;
+      border-radius:999px;
+      box-shadow:0 0 0 1px rgba(248,113,113,.6), 0 6px 16px rgba(239,68,68,.6);
+    }
+    .btn.stop-main:hover:not(:disabled) {
+      background:#f97373;
+      box-shadow:0 0 0 1px rgba(254,202,202,.8), 0 8px 18px rgba(239,68,68,.8);
+      transform:translateY(-0.5px);
+    }
+    .status { color:var(--muted); font-size:12px; }
+    .grid { display:grid; grid-template-columns: 1fr; gap:16px; margin-top:18px; }
+    .panel {
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius:14px;
+      padding:16px;
+    }
+    .panel h2 { margin:0 0 10px; font-size:18px; }
+    .flex { display:flex; gap:16px; flex-wrap: wrap; }
+    .grow { flex:1; min-width: 320px; }
+    table { width:100%; border-collapse: collapse; }
+    th, td { padding:10px; border-bottom:1px solid var(--border); font-size: 13px; }
+    th { text-align:left; color: var(--muted); font-weight:600; }
+    tr:hover { background: rgba(255,255,255,0.03); }
+    .pill { display:inline-block; padding:3px 8px; border-radius:999px; background: #0e7490; font-size:12px; }
+    .muted { color: var(--muted); }
+    .progress {
+      height: 16px;
+      background: radial-gradient(circle at top, #020617, #020617) padding-box;
+      border:1px solid #1f2937;
+      border-radius:999px;
+      overflow:hidden;
+      box-shadow:0 0 0 1px rgba(15,23,42,.7), 0 0 12px rgba(59,130,246,.4) inset;
+    }
+    .progress > div {
+      height: 100%;
+      background: linear-gradient(90deg,#4f46e5,#22c55e);
+      width: 0%;
+      transition: width .2s ease;
+      box-shadow:0 0 14px rgba(129,140,248,.9);
+    }
+    .sep { height: 12px; }
+    .heartbeat { display:inline-flex; align-items:center; gap:6px; margin-left:6px; }
+    .dot {
+      width:10px; height:10px; border-radius:50%;
+      background: var(--bad);
+      box-shadow: 0 0 0 0 rgba(34,197,94,0.7);
+      transition: background .2s ease, box-shadow .2s ease;
+    }
+    .dot.ok {
+      background: var(--good);
+      box-shadow: 0 0 0 8px rgba(34,197,94,0);
+      animation: pulse 1.5s infinite;
+    }
+    .dot.warn {
+      background: #f59e0b;
+      box-shadow: none;
+      animation: none;
+    }
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(34,197,94,.55);}
+      70% { box-shadow: 0 0 0 12px rgba(34,197,94,0);}
+      100% { box-shadow: 0 0 0 0 rgba(34,197,94,0);}
+    }
+    .micro { font-size:11px; color:var(--muted); }
+    .spacer { flex:1; }
+    .kpis { display:flex; flex-wrap:wrap; gap:12px; }
+    .kpi {
+      background:#111827;
+      border-radius:12px;
+      padding:10px 12px;
+      border:1px solid #1f2937;
+      min-width:140px;
+    }
+    .kpi-label { font-size:11px; color:#9ca3af; text-transform:uppercase; letter-spacing:.05em; }
+    .kpi-value { font-size:18px; font-weight:600; margin-top:4px; }
+    .kpi-sub { font-size:11px; color:#6b7280; margin-top:2px; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <h1>📊 EVM Profiler — Pro Plus</h1>
+      <p class="small">
+        Concurrent block fetch + provider presets + dual-pass token detection + Spamoor export + richer tx type breakdown.
+      </p>
+      <div class="toolbar">
+        <div class="box" style="flex:1; flex-wrap:wrap; gap:10px 16px;">
+          <div class="row">
+            <strong>RPC</strong>
+            <input id="rpcInput" type="text" placeholder="https://mainnet.infura.io/v3/YOUR_KEY" />
+            <button id="connectBtn" class="btn">Connect</button>
+            <span id="rpcStatus" class="status"></span>
+            <span class="heartbeat"><span id="hbDot" class="dot"></span><span id="hbText" class="status">idle</span></span>
+          </div>
+          <div class="row">
+            <div>Provider</div>
+            <select id="providerProfile">
+              <option value="custom" selected>Custom</option>
+              <option value="infura">Infura</option>
+              <option value="alchemy">Alchemy</option>
+              <option value="erigon">Erigon</option>
+              <option value="public">Public Node</option>
+              <option value="local">Local (Geth/Nethermind)</option>
+            </select>
+            <div>Start</div><input id="startBlock" type="number" value="0" style="width:120px;">
+            <div>End</div><input id="endBlock" type="number" value="0" style="width:120px;">
+            <div>Page</div><input id="pageSize" type="number" value="500" style="width:90px;">
+            <div>Conc.</div><input id="concurrency" type="number" value="4" style="width:80px;">
+            <label><input id="skipContract" type="checkbox" checked> Skip contract check</label>
+            <label><input id="dualPass" type="checkbox"> Dual-pass (logs + receipts)</label>
+            <div>Tx cap</div><input id="txCap" type="number" value="" placeholder="optional" style="width:120px;">
+            <button id="runBtn" class="btn run-main">▶ Run</button>
+            <button id="stopBtn" class="btn stop-main" disabled>■ Stop</button>
+          </div>
+          <div class="row">
+            <button id="exportJson" class="btn">summary.json</button>
+            <button id="exportCsv" class="btn">per_block.csv</button>
+            <button id="exportSpamoor" class="btn">Spamoor YAML</button>
+            <span id="runStatus" class="status"></span>
+            <span id="errorStatus" class="status" style="color:#f97373;"></span>
+          </div>
+          <div class="progress" style="flex:1; max-width: 860px; margin-top:4px;">
+            <div id="progressbar"></div>
+          </div>
+          <div class="micro" id="blockProgressText"></div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section class="grid">
+      <div class="panel">
+        <h2>Overview</h2>
+        <div id="overviewKpis" class="kpis">
+          <!-- filled by JS -->
+        </div>
+      </div>
+    </section>
+
+    <section class="grid">
+      <div class="panel">
+        <h2>Transaction types</h2>
+        <div class="flex">
+          <div class="grow"><canvas id="txCountChart" height="260"></canvas></div>
+          <div class="grow"><canvas id="txShareChart" height="260"></canvas></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Tables</h2>
+        <div style="overflow:auto;">
+          <table id="typesTable">
+            <thead>
+              <tr>
+                <th>Type</th>
+                <th>Count</th>
+                <th>Gas used</th>
+                <th>Avg gas price (gwei)</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const $ = (sel) => document.querySelector(sel);
+
+    let web3 = null;
+    let summary = null;
+    let perBlockRows = [];
+    let cancelRequested = false;
+    let runStartMs = 0;
+
+    const hbDot = $("#hbDot");
+    const hbText = $("#hbText");
+    const runBtn = $("#runBtn");
+    const stopBtn = $("#stopBtn");
+    const runStatus = $("#runStatus");
+    const errorStatus = $("#errorStatus");
+    const progressbar = $("#progressbar");
+    const blockProgressText = $("#blockProgressText");
+
+    function beat(msg="active"){
+      hbDot.className = "dot ok";
+      hbText.textContent = msg;
+    }
+
+    function updateProgress(cur,total){
+      const pct = Math.max(0,Math.min(100,Math.round((cur/Math.max(1,total))*100)));
+      progressbar.style.width = pct+"%";
+    }
+
+    function disableRunUI(disabled){
+      runBtn.disabled = disabled;
+      stopBtn.disabled = !disabled;
+    }
+
+    async function connectRPC(){
+      const url = $("#rpcInput").value.trim();
+      if (!url){ $("#rpcStatus").textContent = "Enter an RPC URL."; return false; }
+      web3 = new Web3(new Web3.providers.HttpProvider(url,{timeout:60000}));
+      try {
+        const ok = await web3.eth.net.isListening();
+        $("#rpcStatus").textContent = ok ? "Connected" : "Failed to connect";
+        $("#rpcStatus").style.color = ok ? "#22c55e" : "#ef4444";
+        if (ok) beat("rpc ok");
+        return ok;
+      } catch {
+        $("#rpcStatus").textContent = "Failed to connect";
+        $("#rpcStatus").style.color = "#ef4444";
+        return false;
+      }
+    }
+
+    // Provider presets
+    const providerProfile = $("#providerProfile");
+    const pageSizeEl = $("#pageSize");
+    const concEl = $("#concurrency");
+
+    const presets = {
+      custom: { page: 500, conc: 4, logsStep: 2000 },
+      infura: { page: 300, conc: 4, logsStep: 1800 },
+      alchemy:{ page: 400, conc: 6, logsStep: 2200 },
+      erigon: { page: 800, conc: 8, logsStep: 4000 },
+      public: { page: 250, conc: 3, logsStep: 1500 },
+      local:  { page:1000, conc:10, logsStep: 5000 }
+    };
+
+    providerProfile.addEventListener("change", ()=>{
+      const p = presets[providerProfile.value] || presets.custom;
+      pageSizeEl.value = p.page;
+      concEl.value = p.conc;
+    });
+
+    // Simple concurrency helper for per-page block fetch
+    async function mapWithConcurrency(items, concurrency, fn) {
+      const results = new Array(items.length);
+      let index = 0;
+
+      async function worker() {
+        while (index < items.length && !cancelRequested) {
+          const i = index++;
+          try {
+            results[i] = await fn(items[i], i);
+          } catch (e) {
+            console.error("worker error", e);
+            results[i] = null;
+          }
+        }
+      }
+
+      const workers = [];
+      const workerCount = Math.max(1, Math.min(concurrency, items.length));
+      for (let i = 0; i < workerCount; i++) {
+        workers.push(worker());
+      }
+      await Promise.all(workers);
+      return results;
+    }
+
+    const startBlockEl = $("#startBlock");
+    const endBlockEl = $("#endBlock");
+    const skipContract = $("#skipContract");
+    const txCap = $("#txCap");
+    const dualPass = $("#dualPass");
+
+    let txCountChart = null;
+    let txShareChart = null;
+
+    function renderCharts(){
+      const ctx1 = document.getElementById("txCountChart");
+      const ctx2 = document.getElementById("txShareChart");
+      const entries = Object.entries(summary?.tx_types || {})
+        .map(([k,v])=>({type:k, count: v.count||0}))
+        .filter(x=>x.count>0)
+        .sort((a,b)=> b.count - a.count);
+
+      const labels = entries.map(x=>x.type);
+      const counts = entries.map(x=>x.count);
+      const total = counts.reduce((a,b)=>a+b,0) || 1;
+      const shares = counts.map(c => +(c*100/total).toFixed(2));
+
+      if (txCountChart) txCountChart.destroy();
+      if (txShareChart) txShareChart.destroy();
+
+      txCountChart = new Chart(ctx1, {
+        type: "bar",
+        data: { labels, datasets: [{ label: "Tx count", data: counts }] },
+        options: { responsive: true, plugins:{legend:{display:false}} }
+      });
+
+      txShareChart = new Chart(ctx2, {
+        type: "doughnut",
+        data: { labels, datasets: [{ label: "Share %", data: shares }] },
+        options: { responsive:true, plugins:{legend:{position:"bottom"}} }
+      });
+    }
+
+    function renderTables(){
+      if (!summary || !summary.tx_types) return;
+      const tbody=$("#typesTable tbody");
+      const entries=Object.entries(summary.tx_types||{}).sort((a,b)=>a[0].localeCompare(b[0]));
+      tbody.innerHTML=entries.map(([t,v])=>`<tr><td><span class="pill">${t}</span></td><td>${v.count||0}</td><td>${v.gas_used||0}</td><td>${v.avg_gas_price_gwei||0}</td></tr>`).join("");
+      renderCharts();
+      renderOverview();
+    }
+
+    // Overview KPIs
+    function renderOverview(){
+      const el = $("#overviewKpis");
+      if (!summary) { el.innerHTML = ""; return; }
+      const totalTx = summary.total_tx || 0;
+      const blocks = summary.block_count || 0;
+      let dominantType = "-";
+      let dominantCount = 0;
+      for (const [k,v] of Object.entries(summary.tx_types || {})){
+        if ((v.count||0) > dominantCount) {
+          dominantCount = v.count||0;
+          dominantType = k;
+        }
+      }
+
+      let tpsText = "n/a";
+      if (perBlockRows.length >= 2){
+        const firstTs = perBlockRows[0][1];
+        const lastTs = perBlockRows[perBlockRows.length-1][1];
+        const dur = Math.max(1, lastTs - firstTs);
+        const tps = totalTx / dur;
+        tpsText = tps ? tps.toFixed(3) : "0.000";
+      }
+
+      el.innerHTML = `
+        <div class="kpi">
+          <div class="kpi-label">Blocks</div>
+          <div class="kpi-value">${blocks}</div>
+          <div class="kpi-sub">from #${summary.start_block} to #${summary.end_block}</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Total tx</div>
+          <div class="kpi-value">${totalTx}</div>
+          <div class="kpi-sub">${tpsText} tx/sec (approx)</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Dominant type</div>
+          <div class="kpi-value">${dominantType}</div>
+          <div class="kpi-sub">${dominantCount} tx</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Chain ID</div>
+          <div class="kpi-value">${summary.chain_id ?? "?"}</div>
+          <div class="kpi-sub">from RPC</div>
+        </div>
+      `;
+    }
+
+    // keccak256 of Transfer/TransferSingle/TransferBatch
+    const SIG_TRANSFER = Web3.utils.keccak256("Transfer(address,address,uint256)").toLowerCase();
+    const SIG_ERC1155_SINGLE = Web3.utils.keccak256("TransferSingle(address,address,address,uint256,uint256)").toLowerCase();
+    const SIG_ERC1155_BATCH  = Web3.utils.keccak256("TransferBatch(address,address,address,uint256[],uint256[])").toLowerCase();
+
+    async function scanLogsTokens(start, end, stepBlocks) {
+      const totalBlocks = end - start + 1;
+      const tokenTxHashes = new Set();
+
+      for (let s = start; s <= end; s += stepBlocks) {
+        if (cancelRequested) break;
+        const to = Math.min(end, s + stepBlocks - 1);
+
+        try {
+          const logs20 = await web3.eth.getPastLogs({
+            fromBlock: s,
+            toBlock: to,
+            topics: [SIG_TRANSFER]
+          });
+          for (const lg of logs20 || []) {
+            if (lg.transactionHash) tokenTxHashes.add(lg.transactionHash.toLowerCase());
+          }
+        } catch (e) {
+          console.warn("logs scan erc20/721 error", e);
+        }
+
+        try {
+          const logs1155a = await web3.eth.getPastLogs({
+            fromBlock: s,
+            toBlock: to,
+            topics: [SIG_ERC1155_SINGLE]
+          });
+          const logs1155b = await web3.eth.getPastLogs({
+            fromBlock: s,
+            toBlock: to,
+            topics: [SIG_ERC1155_BATCH]
+          });
+          for (const lg of logs1155a || []) {
+            if (lg.transactionHash) tokenTxHashes.add(lg.transactionHash.toLowerCase());
+          }
+          for (const lg of logs1155b || []) {
+            if (lg.transactionHash) tokenTxHashes.add(lg.transactionHash.toLowerCase());
+          }
+        } catch (e) {
+          console.warn("logs scan erc1155 error", e);
+        }
+
+        const doneBlocks = Math.min(to, end) - start + 1;
+        updateProgress(doneBlocks, totalBlocks);
+        blockProgressText.textContent = `Logs pass: blocks ${s}-${to} / ${end}`;
+        beat(`logs ${s}-${to}`);
+      }
+      return tokenTxHashes;
+    }
+
+    async function runProfiler(){
+      errorStatus.textContent = "";
+      if (!(await connectRPC())) return;
+      cancelRequested = false;
+      disableRunUI(true);
+      runStatus.textContent = "Running…";
+      runStartMs = Date.now();
+
+      const start = Number(startBlockEl.value);
+      const end   = Number(endBlockEl.value);
+      const page  = Math.max(1, Number(pageSizeEl.value || "500"));
+      const doSkip = !!skipContract.checked;
+      const txCapN = Number(txCap.value || "0") || null;
+      const conc   = Math.max(1, Number(concEl.value || "4"));
+
+      if (!Number.isFinite(start) || !Number.isFinite(end) || end < start) {
+        runStatus.textContent = "Invalid range"; disableRunUI(false); return;
+      }
+
+      const blocksTotal = end - start + 1;
+
+      summary = {
+        start_block: start,
+        end_block:   end,
+        chain_id:    null,
+        block_count: blocksTotal,
+        total_tx:    0,
+        tx_types: {}
+      };
+      perBlockRows = [];
+      renderOverview();
+
+      try {
+        const chainId = await web3.eth.getChainId();
+        summary.chain_id = Number(chainId);
+      } catch {}
+
+      // Optional dual-pass logs scan
+      let tokenHashSet = null;
+      if (dualPass.checked) {
+        runStatus.textContent = "Pass 1: logs scan for token txs…";
+        const preset = presets[providerProfile.value] || presets.custom;
+        const stepBlocks = preset.logsStep || 2000;
+        tokenHashSet = await scanLogsTokens(start, end, stepBlocks);
+        if (cancelRequested) {
+          runStatus.textContent = "Stopped during logs pass.";
+          disableRunUI(false);
+          return;
+        }
+      }
+
+      runStatus.textContent = tokenHashSet ? "Pass 2: receipts & classification…" : "Running…";
+
+      const DEFAULT_TYPES = [
+        "eth_transfer",
+        "contract_creation",
+        "erc20_transfer",
+        "erc721_transfer",
+        "erc1155_transfer",
+        "mixed_token_activity",
+        "other_contract_call"
+      ];
+      const txTypeStats = {};
+      const codeCache   = {};
+
+      let totalTx = 0;
+      let doneBlocks = 0;
+
+      for (let cur = start; cur <= end; cur += page) {
+        if (cancelRequested) break;
+        const chunkEnd = Math.min(end, cur + page - 1);
+        const blockNums = [];
+        for (let b = cur; b <= chunkEnd; b++) blockNums.push(b);
+
+        const blocks = await mapWithConcurrency(blockNums, conc, (b) =>
+          web3.eth.getBlock(b, true).catch(() => null)
+        );
+
+        // optional getCode for contract vs EOA
+        if (!doSkip) {
+          const addrs = [];
+          for (const blk of blocks) {
+            if (!blk) continue;
+            for (const tx of (blk.transactions || [])) {
+              if (tx.to) {
+                const a = tx.to.toLowerCase();
+                if (codeCache[a] === undefined) addrs.push(a);
+              }
+            }
+          }
+          const uniq = [...new Set(addrs)];
+          for (const a of uniq) {
+            if (cancelRequested) break;
+            try {
+              const c = await web3.eth.getCode(a);
+              codeCache[a] = !!(c && c !== "0x" && c !== "0x00");
+            } catch {
+              codeCache[a] = true;
+            }
+          }
+        }
+
+        for (const blk of blocks) {
+          if (cancelRequested) break;
+          if (!blk) continue;
+          const txs = blk.transactions || [];
+
+          let blockCounts = {};
+          let blockGasUsed = 0n;
+
+          // Receipts strategy: if dualPass enabled and tokenHashSet exists,
+          // only fetch receipts for tx hashes that appear in tokenHashSet.
+          let receipts;
+          if (tokenHashSet) {
+            receipts = await Promise.all(
+              txs.map(tx => {
+                const h = (tx.hash || "").toLowerCase();
+                if (!tokenHashSet.has(h)) return Promise.resolve(null);
+                return web3.eth.getTransactionReceipt(tx.hash).catch(() => null);
+              })
+            );
+          } else {
+            receipts = await Promise.all(
+              txs.map(tx => web3.eth.getTransactionReceipt(tx.hash).catch(() => null))
+            );
+          }
+
+          for (let i=0; i<txs.length; i++) {
+            if (cancelRequested) break;
+            const tx = txs[i];
+            const rc = receipts[i];
+
+            totalTx += 1;
+
+            let erc20 = 0, erc721 = 0, erc1155 = 0;
+            if (rc && rc.logs) {
+              const logs = rc.logs || [];
+              for (const lg of logs) {
+                if (!lg.topics || !lg.topics.length) continue;
+                const t0 = (lg.topics[0] || "").toLowerCase();
+                if (t0 === SIG_TRANSFER) {
+                  if (lg.data && lg.data !== "0x") erc20++; else erc721++;
+                } else if (t0 === SIG_ERC1155_SINGLE || t0 === SIG_ERC1155_BATCH) {
+                  erc1155++;
+                }
+              }
+            }
+
+            let typ = "other_contract_call";
+            if (!tx.to) typ = "contract_creation";
+            else if (erc20 > 0 && erc721 === 0 && erc1155 === 0) typ = "erc20_transfer";
+            else if (erc721 > 0 && erc20 === 0 && erc1155 === 0) typ = "erc721_transfer";
+            else if (erc1155 > 0 && erc20 === 0 && erc721 === 0) typ = "erc1155_transfer";
+            else if (erc20 || erc721 || erc1155) typ = "mixed_token_activity";
+            else if (BigInt(tx.value || 0) > 0n) typ = "eth_transfer";
+
+            if (typ === "other_contract_call" && !doSkip && tx.to) {
+              const a = tx.to.toLowerCase();
+              if (a in codeCache && !codeCache[a]) {
+                typ = "other_contract_call"; // keep as generic call for EOAs in this simple version
+              }
+            }
+
+            const gasUsed = BigInt(rc ? rc.gasUsed || 0 : 0);
+            blockGasUsed += gasUsed;
+            const gasPriceWei = BigInt(tx.gasPrice || 0);
+
+            const s = (txTypeStats[typ] ||= {
+              count: 0,
+              gas_used: 0,
+              gas_price_wei_sum: 0n
+            });
+            s.count += 1;
+            s.gas_used += Number(gasUsed);
+            s.gas_price_wei_sum += gasPriceWei;
+
+            blockCounts[typ] = (blockCounts[typ] || 0) + 1;
+
+            if (txCapN && totalTx >= txCapN) break;
+          }
+
+          perBlockRows.push([
+            blk.number,
+            blk.timestamp,
+            (blk.transactions || []).length,
+            DEFAULT_TYPES.map(t => blockCounts[t] || 0).join("|"),
+            Number(blockGasUsed),
+            Number(blk.gasLimit || 0)
+          ]);
+
+          doneBlocks += 1;
+          if (doneBlocks % 5 === 0 || doneBlocks === blocksTotal) {
+            updateProgress(doneBlocks, blocksTotal);
+            blockProgressText.textContent = `Blocks: ${blk.number} / ${end}`;
+          }
+          beat(`block ${blk.number}`);
+
+          if (txCapN && totalTx >= txCapN) break;
+        }
+        if (txCapN && totalTx >= txCapN) break;
+      }
+
+      const tx_types = {};
+      for (const [k, v] of Object.entries(txTypeStats)) {
+        const avgGwei = v.count ? Number(v.gas_price_wei_sum) / v.count / 1e9 : 0;
+        tx_types[k] = {
+          count: v.count,
+          gas_used: v.gas_used,
+          avg_gas_price_gwei: Math.round(avgGwei * 10000) / 10000
+        };
+      }
+
+      summary.tx_types = tx_types;
+      summary.total_tx = Object.values(txTypeStats).reduce((a, v) => a + v.count, 0);
+
+      renderTables();
+      runStatus.textContent = cancelRequested ? "Stopped." : "Done.";
+      disableRunUI(false);
+      beat("done");
+    }
+
+    function stopRun(){
+      cancelRequested = true;
+      runStatus.textContent = "Stopping…";
+      beat("stop requested");
+    }
+
+    $("#connectBtn").addEventListener("click", connectRPC);
+    $("#runBtn").addEventListener("click", runProfiler);
+    $("#stopBtn").addEventListener("click", stopRun);
+
+    function dl(name, text, mime="application/octet-stream"){
+      const a=document.createElement("a");
+      a.href=URL.createObjectURL(new Blob([text],{type:mime}));
+      a.download=name;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    }
+
+    $("#exportJson").addEventListener("click", ()=>{
+      if(!summary){ runStatus.textContent="Nothing to export yet."; return; }
+      dl("summary.json", JSON.stringify(summary,null,2), "application/json");
+    });
+    $("#exportCsv").addEventListener("click", ()=>{
+      if(!perBlockRows.length){ runStatus.textContent="No per-block data yet."; return; }
+      const header=["block_number","timestamp","tx_count","eth_transfer","contract_creation","erc20_transfer","erc721_transfer","erc1155_transfer","mixed_token_activity","other_contract_call","block_gas_used","block_gas_limit"];
+      const lines=[header.join(",")].concat(perBlockRows.map(r=>r.join(",")));
+      dl("per_block.csv", lines.join("\n"), "text/csv");
+    });
+
+    // --- Spamoor export (single YAML file) ---
+    function inferBaseFeeFromAvg(avgGwei, tipDefault){ const base = Math.max((avgGwei||0) - (tipDefault||2), 1); return Math.round(base*10)/10; }
+    function estimateSlots(){
+      if (perBlockRows.length>=2){
+        const first=perBlockRows[0][1];
+        const last=perBlockRows[perBlockRows.length-1][1];
+        const dur = Math.max(1, (last-first));
+        return Math.max(1, Math.round(dur/12));
+      }
+      const blocks = (summary?.block_count)||1;
+      return Math.max(1, Math.round(blocks));
+    }
+    function mapTypeToScenario(type){
+      if (type==="eth_transfer") return "eoatx";
+      if (type==="erc20_transfer") return "erctx";
+      if (type==="contract_creation") return "deploytx";
+      return "calltx";
+    }
+    function buildScenarioObjects(){
+      const tip = 2;
+      const namePrefix = "profiled";
+      const seed = "evm-profiler";
+      const maxWallets = 200;
+      const pendingMult = 2;
+      const refillAmount = "1000000000000000000";
+      const refillBalance = "500000000000000000";
+      const refillInterval = 600;
+      const ethAmount = "100000000000000";
+
+      const types = Object.entries(summary.tx_types||{});
+      const totalCount = types.reduce((a,[,v])=> a + (v.count||0), 0) || 1;
+      const slots = estimateSlots();
+      const agg = {};
+
+      for (const [t, v] of types){
+        const scenario = mapTypeToScenario(t);
+        const share = (v.count||0) / totalCount;
+        const throughput = Math.max(0, Math.round((summary.total_tx||0) * share / slots));
+        const base = inferBaseFeeFromAvg(v.avg_gas_price_gwei||0, tip);
+        if (!agg[scenario]) agg[scenario] = { count:0, throughput:0, base_gwei:0, types:[] };
+        agg[scenario].count += (v.count||0);
+        agg[scenario].throughput += throughput;
+        agg[scenario].base_gwei = Math.max(agg[scenario].base_gwei, base);
+        agg[scenario].types.push({ type: t, share: Math.round(share*1000)/10, avg_gwei: v.avg_gas_price_gwei||0 });
+      }
+      const scenarios = [];
+      for (const [scenario, info] of Object.entries(agg)){
+        if (scenario === "calltx") continue;
+        scenarios.push({
+          scenario,
+          name: `${namePrefix}-${scenario}`,
+          description: `Auto-generated from EVM Profiler. Types: ${info.types.map(x=>x.type).join(", ")}`,
+          config: {
+            seed,
+            refill_amount: refillAmount,
+            refill_balance: refillBalance,
+            refill_interval: refillInterval,
+            throughput: Math.round(info.throughput),
+            max_pending: Math.max(1, Math.round((info.throughput||0) * pendingMult)),
+            max_wallets: maxWallets,
+            base_fee: info.base_gwei || 1,
+            tip_fee: tip,
+            ...(scenario==="eoatx" ? { amount: ethAmount } : {})
+          }
+        });
+      }
+      const callAgg = agg["calltx"];
+      if (callAgg) {
+        scenarios.push({
+          scenario: "calltx",
+          name: `${namePrefix}-calltx`,
+          description: `Auto-generated from EVM Profiler. Types: ${callAgg.types.map(x=>x.type).join(", ")}`,
+          config: {
+            seed,
+            refill_amount: refillAmount,
+            refill_balance: refillBalance,
+            refill_interval: refillInterval,
+            throughput: Math.round(callAgg.throughput),
+            max_pending: Math.max(1, Math.round((callAgg.throughput||0) * pendingMult)),
+            max_wallets: maxWallets,
+            base_fee: callAgg.base_gwei || 1,
+            tip_fee: tip
+          }
+        });
+      }
+      return scenarios;
+    }
+    function toYaml(obj){
+      const L=[];
+      L.push(`- scenario: ${obj.scenario}`);
+      L.push(`  name: "${obj.name}"`);
+      L.push(`  description: "${obj.description.replace(/"/g,'\\"')}"`);
+      L.push(`  config:`);
+      const cfg=obj.config||{};
+      for(const [k,v] of Object.entries(cfg)){
+        L.push(`    ${k}: ${v}`);
+      }
+      return L.join("\n");
+    }
+    $("#exportSpamoor").addEventListener("click", ()=>{
+      if (!summary) { runStatus.textContent = "Run profiler first."; return; }
+      const scenarios = buildScenarioObjects();
+      const yaml = scenarios.map(toYaml).join("\n\n");
+      dl("spamoor_scenarios.yaml", yaml, "text/yaml");
+    });
+  </script>
+</body>
+</html>
