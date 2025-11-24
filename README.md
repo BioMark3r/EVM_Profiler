@@ -1,4 +1,4 @@
-# EVM Profiler — Pro Plus (Tokens + CSV)
+# EVM Profiler
 
 Browser-only Ethereum traffic profiler with:
 
