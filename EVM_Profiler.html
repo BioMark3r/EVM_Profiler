@@ -322,7 +322,7 @@
             <p class="small">
               Paste token contract addresses (one per line), or click
               <strong>Collect from run</strong> to grab all token addresses observed in ERC-20/721/1155 logs.
-              After each run, the profiler also auto-resolves a small set of top tokens.
+              Token resolution only happens when you click <strong>Resolve</strong>.
             </p>
             <textarea id="tokenInput" placeholder="0xdAC17F958D2ee523a2206206994597C13D831ec7&#10;0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"></textarea>
             <div class="row" style="margin-top:8px;">
@@ -680,7 +680,11 @@
 
     let runStartMs = 0;
 
-    // ---- main run (non-blocking token auto-resolve) ----
+    function updateBlockProgressAfterLoop(doneBlocks, totalBlocks, lastBlock) {
+      updateProgressUI(doneBlocks, totalBlocks, lastBlock);
+    }
+
+    // ---- main run ----
     async function runProfiler() {
       errorStatus.textContent = "";
       try {
@@ -707,7 +711,7 @@
 
         const blocksTotal = end - start + 1;
 
-        // ensure summary stub
+        // stub summary
         summary = {
           start_block: start,
           end_block:   end,
@@ -757,7 +761,6 @@
             renderTables();
             runStatus.textContent = "Logs scan complete";
             disableRunUI(false);
-            setTimeout(() => { autoResolveTopTokens().catch(console.error); }, 0);
             return;
           }
         }
@@ -766,6 +769,7 @@
         runStatus.textContent = dualPass.checked ? "Pass 2: receipts/classify…" : "Running (full)…";
         let totalTx   = 0;
         let doneBlocks = 0;
+        let lastBlockNumber = start;
 
         for (let cur = start; cur <= end; cur += page) {
           if (cancelRequested) break;
@@ -802,6 +806,7 @@
             if (cancelRequested) break;
             if (!blk) continue;
             const txs = blk.transactions || [];
+            lastBlockNumber = blk.number;
 
             let receipts = new Array(txs.length).fill(null);
             if (dualPass.checked && tokenHashSet) {
@@ -903,6 +908,8 @@
           beat(`batch ${cur}-${chunkEnd}`);
         }
 
+        updateBlockProgressAfterLoop(doneBlocks, blocksTotal, lastBlockNumber);
+
         const tx_types = {};
         for (const [k, v] of Object.entries(txTypeStats)) {
           const avgGwei = v.count
@@ -929,10 +936,6 @@
         runStatus.textContent = cancelRequested ? "Stopped." : "Done.";
         disableRunUI(false);
         beat("done");
-
-        // kick off token metadata resolution in the background
-        setTimeout(() => { autoResolveTopTokens().catch(console.error); }, 0);
-
       } catch (err) {
         showError(err && err.message ? err.message : err);
         runStatus.textContent = "Error during run.";
@@ -1175,7 +1178,7 @@
       const a = document.createElement("a"); a.href = URL.createObjectURL(zip); a.download = "spamoor_scenarios.zip"; document.body.appendChild(a); a.click(); a.remove();
     });
 
-    // ---- token resolution panel ----
+    // ---- token resolution panel (manual only) ----
     const tokenInput = $("#tokenInput");
     const tokenStatus = $("#tokenStatus");
     $("#collectTokens").addEventListener("click", ()=>{
@@ -1253,30 +1256,6 @@
       reader.readAsText(f);
       e.target.value = "";
     });
-
-    // auto-resolve subset of tokens after run (background)
-    async function autoResolveTopTokens(){
-      if (!web3) return;
-      const addrs = Array.from(tokensSeen || [])
-        .map(a => Web3.utils.toChecksumAddress(a))
-        .filter(a => !(a in tokenCache));
-      if (!addrs.length) return;
-      const MAX_AUTO = 12;
-      const sample = addrs.slice(0, MAX_AUTO);
-      renderTokenStatus(`Auto-resolving ${sample.length} token(s)…`);
-      for (let i=0; i<sample.length; i++){
-        try{
-          const meta = await resolveOneToken(sample[i]);
-          tokenCache[sample[i]] = { symbol: meta.symbol, name: meta.name, decimals: meta.decimals };
-          renderTokenTable();
-          renderTokenStatus(`Auto-resolved ${i+1}/${sample.length}…`);
-        } catch(e){
-          // ignore per-token errors
-        }
-      }
-      saveTokenCache();
-      renderTokenStatus("Token metadata updated from run.");
-    }
   </script>
 </body>
 </html>
